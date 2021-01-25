@@ -3,9 +3,10 @@
 
 #include <QOpenGLWidget>
 #include <QOpenGLDebugLogger>
-#include <QOpenGLFunctions_3_3_Core>
+#include <QOpenGLExtraFunctions>
+//#include <QOpenGLFunctions_3_3_Core>
 
-class MyGLWidget : public QOpenGLWidget, protected QOpenGLFunctions_3_3_Core
+class MyGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions
 {
     Q_OBJECT
 public:
@@ -21,7 +22,7 @@ private slots:
     void handleLoggedMessage(const QOpenGLDebugMessage &message);
 
 private:
-    GLuint trianglesVAO;
+    GLuint pointsVAO;
     GLuint arrayBuffer;
     GLuint texture;
     GLuint program;

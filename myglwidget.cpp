@@ -116,12 +116,15 @@ void MyGLWidget::initializeGL()
         logger.startLogging();
     }
 
+    qDebug() << "OpenGL renderer:" << (char *)glGetString(GL_RENDERER);
+    qDebug() << "OpenGL version:" << (char *)glGetString(GL_VERSION);
+
     glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
 
-    glGenVertexArrays(1, &trianglesVAO);
-    glBindVertexArray(trianglesVAO);
+    glGenVertexArrays(1, &pointsVAO);
+    glBindVertexArray(pointsVAO);
 
     GLfloat vertices[NUM_VERTICES][3];
 
@@ -178,7 +181,7 @@ void MyGLWidget::initializeGL()
 
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_3D, texture);
-    // TODO: if you ever upgrade to OpenGL 4 switch to glTexStorage
+    // TODO: if you ever upgrade to OpenGL 4.2 switch to glTexStorage
     glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, 16, 16, 16, 0,
                  GL_BGRA, GL_UNSIGNED_BYTE, voxData);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -217,7 +220,7 @@ void MyGLWidget::paintGL()
     glUniformMatrix4fv(modelViewLoc, 1, GL_FALSE, glm::value_ptr(modelViewMat));
 
     // render
-    glBindVertexArray(trianglesVAO);
+    glBindVertexArray(pointsVAO);
 
     bool measureTime = frame % 60 == 0;
     if (measureTime) {
@@ -230,8 +233,7 @@ void MyGLWidget::paintGL()
         glBeginQuery(GL_TIME_ELAPSED, timerQuery);
     }
 
-    for (int i = 0; i < 256; i++)
-        glDrawArrays(GL_POINTS, 0, NUM_VERTICES);
+    glDrawArrays(GL_POINTS, 0, NUM_VERTICES);
 
     if (measureTime)
         glEndQuery(GL_TIME_ELAPSED);
