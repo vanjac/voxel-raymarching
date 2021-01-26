@@ -4,5 +4,6 @@
         <file>test.png</file>
         <file>voxelmarch.frag</file>
         <file>voxelmarch.vert</file>
+        <file>chr_knight.bmp</file>
     </qresource>
 </RCC>

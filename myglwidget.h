@@ -34,11 +34,11 @@ private slots:
 private:
     GLuint frameVAO;
     GLuint framePosBuffer, frameUVBuffer;
-    GLuint texture;
+    GLuint modelTexture, paletteTexture;
     GLuint program;
     GLuint timerQuery;
     // shader uniform locations
-    GLint modelLoc, camPosLoc, camDirLoc, camULoc, camVLoc;
+    GLint modelLoc, paletteLoc, camPosLoc, camDirLoc, camULoc, camVLoc;
 
     int frame = 0;
     bool trackMouse = false;

@@ -72,6 +72,7 @@ void MyGLWidget::initializeGL()
     glDeleteShader(fragmentShader);
 
     modelLoc = glGetUniformLocation(program, "Model");
+    paletteLoc = glGetUniformLocation(program, "Palette");
     camPosLoc = glGetUniformLocation(program, "CamPos");
     camDirLoc = glGetUniformLocation(program, "CamDir");
     camULoc = glGetUniformLocation(program, "CamU");
@@ -103,21 +104,36 @@ void MyGLWidget::initializeGL()
     glEnableVertexAttribArray(VERT_UV_LOC);
 
 
-    QImage voxModel(":/chr_knight.png");
+    QImage voxModel(":/chr_knight.bmp");
+    qDebug() << voxModel.format();
     const uchar *voxData = voxModel.constBits();
+    QList<QRgb> palette = voxModel.colorTable();
+    const QRgb *paletteData = palette.constData();
 
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_3D, texture);
+    glGenTextures(1, &modelTexture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_3D, modelTexture);
     // TODO: if you ever upgrade to OpenGL 4.2 switch to glTexStorage
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, 16, 16, 16, 0,
-                 GL_BGRA, GL_UNSIGNED_BYTE, voxData);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_R8I, 16, 16, 16, 0,
+                 GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxData);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
 
+    glGenTextures(1, &paletteTexture);
+    glActiveTexture(GL_TEXTURE0 + 1);
+    glBindTexture(GL_TEXTURE_1D, paletteTexture);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, palette.size(), 0,
+                 GL_BGRA, GL_UNSIGNED_BYTE, paletteData);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+
+
     glUniform1i(modelLoc, 0);
+    glUniform1i(paletteLoc, 1);
 
     glGenQueries(1, &timerQuery);
 }
