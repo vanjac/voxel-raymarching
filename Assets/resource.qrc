@@ -3,5 +3,6 @@
         <file>voxelmarch.frag</file>
         <file>voxelmarch.vert</file>
         <file>chr_knight.xraw</file>
+        <file>monu1.xraw</file>
     </qresource>
 </RCC>

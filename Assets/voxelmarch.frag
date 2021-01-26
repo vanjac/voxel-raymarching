@@ -12,11 +12,13 @@ const float EPSILON = 0.001;
 
 vec4 raymarch(vec3 origin, vec3 dir)
 {
+    ivec3 modelDim = textureSize(Model, 0);
+    //ivec3 dimMask = modelDim - 1;
     float t = 0;
       while (t <= 1024) {
         vec3 p = origin + dir * t;
-        int c = textureLod(Model, p / 16, 0).r;
-        //int c = texelFetch(Model, ivec3(floor(p)) & 0xF, 0).r;
+        int c = textureLod(Model, p / modelDim, 0).r;
+        //int c = texelFetch(Model, ivec3(floor(p)) & dimMask, 0).r;
         if (c != 0) {
             return texelFetch(Palette, c, 0);
         }
