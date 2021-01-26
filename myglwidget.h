@@ -5,6 +5,10 @@
 #include <QOpenGLDebugLogger>
 #include <QOpenGLExtraFunctions>
 //#include <QOpenGLFunctions_3_3_Core>
+#include <QByteArray>
+#include <QMouseEvent>
+#include <QKeyEvent>
+#include <glm/glm.hpp>
 
 class MyGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions
 {
@@ -17,18 +21,31 @@ protected:
     void initializeGL() override;
     void resizeGL(int w, int h) override;
     void paintGL() override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
 
 private slots:
     void handleLoggedMessage(const QOpenGLDebugMessage &message);
+    void compileShaderCheck(GLuint shader, QString name);
+    QByteArray loadStringResource(QString filename);
 
 private:
-    GLuint pointsVAO;
-    GLuint arrayBuffer;
+    GLuint frameVAO;
+    GLuint framePosBuffer, frameUVBuffer;
     GLuint texture;
     GLuint program;
     GLuint timerQuery;
-    GLint modelViewLoc, projectionLoc;
+    // shader uniform locations
+    GLint modelLoc, camPosLoc, camDirLoc, camULoc, camVLoc;
+
     int frame = 0;
+    bool trackMouse = false;
+    QPoint prevMousePos;
+    float camYaw = 0, camPitch = 0;
+    glm::vec4 camPos = glm::vec4(0,0,0,1);
+    glm::vec3 camVelocity = glm::vec3(0,0,0);
 
     QOpenGLDebugLogger logger;
 };

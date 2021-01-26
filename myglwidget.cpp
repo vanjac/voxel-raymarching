@@ -1,91 +1,19 @@
 #include "myglwidget.h"
 #include <QOpenGLContext>
-#include <QOpenGLFunctions>
+#include <QFile>
 #include "opengllog.h"
-#include <glm/glm.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-const GLuint NUM_VERTICES = 16 * 256;
-
+const GLsizei NUM_FRAME_VERTS = 6;
 const GLuint VERT_POSITION_LOC = 0;
+const GLuint VERT_UV_LOC = 1;
 
-const float PROJ_FOV = glm::radians(60.0f);
-const float PROJ_NEAR = 0.1;
-const float PROJ_FAR = 100;
+const float FLY_SPEED = 0.2;
 
-const GLchar *vertexShaderSrc = R"X(
-#version 330 core
-
-layout(location = 0) in vec3 position;
-
-void main()
-{
-    gl_Position = vec4(position, 1.0);
-}
-)X";
-
-const GLchar *geometryShaderSrc = R"X(
-#version 330 core
-
-layout (points) in;
-layout (triangle_strip, max_vertices = 24) out;
-out vec4 Color;
-
-uniform mat4 ModelView;
-uniform mat4 Projection;
-
-uniform sampler3D Model;
-
-vec4 transform(vec4 pos)
-{
-    return Projection * ModelView * pos;
-}
-
-void quad(vec4 origin, vec4 u, vec4 v)
-{
-    //Color = u + v;
-    gl_Position = transform(origin);
-    EmitVertex();
-    gl_Position = transform(origin + u);
-    EmitVertex();
-    gl_Position = transform(origin + v);
-    EmitVertex();
-    gl_Position = transform(origin + u + v);
-    EmitVertex();
-    EndPrimitive();
-}
-
-void main()
-{
-    vec4 pos = gl_in[0].gl_Position;
-
-    vec4 c = texture(Model, pos.zxy / 16);
-    if (c.a < 0.5)
-        return;
-    Color = c;
-
-    quad(pos + vec4(1, 0, 0, 0), vec4(0, 1, 0, 0), vec4(0, 0, 1, 0));
-    quad(pos, vec4(0, 0, 1, 0), vec4(0, 1, 0, 0));
-    quad(pos + vec4(0, 1, 0, 0), vec4(0, 0, 1, 0), vec4(1, 0, 0, 0));
-    quad(pos, vec4(1, 0, 0, 0), vec4(0, 0, 1, 0));
-    quad(pos + vec4(0, 0, 1, 0), vec4(1, 0, 0, 0), vec4(0, 1, 0, 0));
-    quad(pos, vec4(0, 1, 0, 0), vec4(1, 0, 0, 0));
-}
-
-)X";
-
-const GLchar *fragmentShaderSrc = R"X(
-#version 330 core
-
-in vec4 Color;
-out vec4 fColor;
-
-void main()
-{
-    fColor = Color;
-}
-)X";
+const glm::vec3 CAM_FORWARD(1, 0, 0);
+const glm::vec3 CAM_RIGHT(0, 0, 1);
+const glm::vec3 CAM_UP(0, 1, 0);
 
 MyGLWidget::MyGLWidget(QWidget *parent)
     : QOpenGLWidget(parent),
@@ -93,6 +21,9 @@ MyGLWidget::MyGLWidget(QWidget *parent)
 {
     // simpler behavior
     setUpdateBehavior(UpdateBehavior::PartialUpdate);
+    // get mouse move events even if button isn't pressed
+    //setMouseTracking(true);
+    setFocusPolicy(Qt::FocusPolicy::ClickFocus);
 }
 
 MyGLWidget::~MyGLWidget()
@@ -119,62 +50,58 @@ void MyGLWidget::initializeGL()
     qDebug() << "OpenGL renderer:" << (char *)glGetString(GL_RENDERER);
     qDebug() << "OpenGL version:" << (char *)glGetString(GL_VERSION);
 
-    glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
-    glEnable(GL_CULL_FACE);
-    glEnable(GL_DEPTH_TEST);
-
-    glGenVertexArrays(1, &pointsVAO);
-    glBindVertexArray(pointsVAO);
-
-    GLfloat vertices[NUM_VERTICES][3];
-
-    for (int z = 0; z < 16; z++) {
-        for (int y = 0; y < 16; y++) {
-            for (int x = 0; x < 16; x++) {
-                vertices[x + y * 16 + z * 256][0] = x;
-                vertices[x + y * 16 + z * 256][1] = y;
-                vertices[x + y * 16 + z * 256][2] = z;
-            }
-        }
-    }
-
-    glGenBuffers(1, &arrayBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, arrayBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSrc, nullptr);
-    glCompileShader(vertexShader);
+    QByteArray vertexSrcArr = loadStringResource(":/voxelmarch.vert");
+    const char *vertexSrc = vertexSrcArr.constData();
+    glShaderSource(vertexShader, 1, &vertexSrc, nullptr);
+    compileShaderCheck(vertexShader, "Vertex");
 
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSrc, nullptr);
-    glCompileShader(fragmentShader);
-
-    GLuint geometryShader = glCreateShader(GL_GEOMETRY_SHADER);
-    glShaderSource(geometryShader, 1, &geometryShaderSrc, nullptr);
-    glCompileShader(geometryShader);
+    QByteArray fragmentSrcArr = loadStringResource(":/voxelmarch.frag");
+    const char *fragmentSrc = fragmentSrcArr.constData();
+    glShaderSource(fragmentShader, 1, &fragmentSrc, nullptr);
+    compileShaderCheck(fragmentShader, "Fragment");
 
     program = glCreateProgram();
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
-    glAttachShader(program, geometryShader);
     glLinkProgram(program);
     glUseProgram(program);
     // clean up
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
-    glDeleteShader(geometryShader);
 
-    glVertexAttribPointer(VERT_POSITION_LOC, 3, GL_FLOAT,
+    modelLoc = glGetUniformLocation(program, "Model");
+    camPosLoc = glGetUniformLocation(program, "CamPos");
+    camDirLoc = glGetUniformLocation(program, "CamDir");
+    camULoc = glGetUniformLocation(program, "CamU");
+    camVLoc = glGetUniformLocation(program, "CamV");
+
+
+    glGenVertexArrays(1, &frameVAO);
+    glBindVertexArray(frameVAO);
+
+    GLfloat vertices[NUM_FRAME_VERTS][2] {
+        {-1, -1}, {1, -1}, {-1, 1},
+        {1, 1}, {-1, 1}, {1, -1}
+    };
+    glGenBuffers(1, &framePosBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, framePosBuffer);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(VERT_POSITION_LOC, 2, GL_FLOAT,
                           GL_FALSE, 0, (void *)0);
     glEnableVertexAttribArray(VERT_POSITION_LOC);
 
-    modelViewLoc = glGetUniformLocation(program, "ModelView");
-    projectionLoc = glGetUniformLocation(program, "Projection");
-    GLint modelLoc = glGetUniformLocation(program, "Model");
+    glGenBuffers(1, &frameUVBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, frameUVBuffer);
+    // default aspect ratio (1, 1)
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_DYNAMIC_DRAW);
 
-    // default aspect ratio 1
-    resizeGL(1, 1);
+    glVertexAttribPointer(VERT_UV_LOC, 2, GL_FLOAT,
+                          GL_FALSE, 0, (void *)0);
+    glEnableVertexAttribArray(VERT_UV_LOC);
+
 
     QImage voxModel(":/chr_knight.png");
     const uchar *voxData = voxModel.constBits();
@@ -200,27 +127,104 @@ void MyGLWidget::handleLoggedMessage(const QOpenGLDebugMessage &message)
     logGLMessage(message);
 }
 
+void MyGLWidget::compileShaderCheck(GLuint shader, QString name)
+{
+    glCompileShader(shader);
+    GLint compiled;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    if (!compiled) {
+        GLint logLen;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
+        char *log = new char[logLen];
+        glGetShaderInfoLog(shader, logLen, NULL, log);
+        qCritical() << name << "shader compile error:" << log;
+        exit(EXIT_FAILURE);
+    }
+}
+
+QByteArray MyGLWidget::loadStringResource(QString filename)
+{
+    QFile f(filename);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qCritical() << "Error reading file" << filename;
+        return QByteArray("");
+    }
+    return f.readAll();
+}
+
 void MyGLWidget::resizeGL(int w, int h)
 {
-    glm::mat4 projectionMat = glm::perspective(PROJ_FOV, (float)w / h, PROJ_NEAR, PROJ_FAR);
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projectionMat));
+    float aspect = (float)w / h;
+    GLfloat uv[NUM_FRAME_VERTS][2] {
+        {-aspect, -1}, {aspect, -1}, {-aspect, 1},
+        {aspect, 1}, {-aspect, 1}, {aspect, -1}
+    };
+    glBindBuffer(GL_ARRAY_BUFFER, frameUVBuffer);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(uv), uv);
+}
+
+void MyGLWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    QPoint pos = event->pos();
+    QPoint delta(0, 0);
+    if (trackMouse)
+        delta = pos - prevMousePos;
+    prevMousePos = pos;
+    trackMouse = true;
+
+    camYaw -= glm::radians((float)delta.x());
+    camPitch -= glm::radians((float)delta.y());
+}
+
+void MyGLWidget::mouseReleaseEvent(QMouseEvent *event)
+{
+    trackMouse = false;
+}
+
+void MyGLWidget::keyPressEvent(QKeyEvent *event)
+{
+    switch(event->key()) {
+    case Qt::Key_W:
+        camVelocity += CAM_FORWARD; break;
+    case Qt::Key_S:
+        camVelocity -= CAM_FORWARD; break;
+    case Qt::Key_D:
+        camVelocity += CAM_RIGHT; break;
+    case Qt::Key_A:
+        camVelocity -= CAM_RIGHT; break;
+    case Qt::Key_E:
+        camVelocity += CAM_UP; break;
+    case Qt::Key_Q:
+        camVelocity -= CAM_UP; break;
+    default:
+        QOpenGLWidget::keyPressEvent(event);
+    }
+}
+
+void MyGLWidget::keyReleaseEvent(QKeyEvent *event)
+{
+    switch(event->key()) {
+    case Qt::Key_W:
+        camVelocity -= CAM_FORWARD; break;
+    case Qt::Key_S:
+        camVelocity += CAM_FORWARD; break;
+    case Qt::Key_D:
+        camVelocity -= CAM_RIGHT; break;
+    case Qt::Key_A:
+        camVelocity += CAM_RIGHT; break;
+    case Qt::Key_E:
+        camVelocity -= CAM_UP; break;
+    case Qt::Key_Q:
+        camVelocity += CAM_UP; break;
+    default:
+        QOpenGLWidget::keyReleaseEvent(event);
+    }
 }
 
 void MyGLWidget::paintGL()
 {
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  // important to call early
-
-    // animate
-
-    glm::mat4 modelViewMat = glm::identity<glm::mat4>();
-    modelViewMat = glm::translate(modelViewMat, glm::vec3(0,0,-5));
-    modelViewMat = glm::scale(modelViewMat, glm::one<glm::vec3>() / 10.0f);
-    modelViewMat = glm::rotate(modelViewMat, glm::radians(20.0f), glm::vec3(1,0,0));
-    modelViewMat = glm::rotate(modelViewMat, glm::radians(frame * 2.0f), glm::vec3(0,1,0));
-    glUniformMatrix4fv(modelViewLoc, 1, GL_FALSE, glm::value_ptr(modelViewMat));
-
     // render
-    glBindVertexArray(pointsVAO);
+    glBindVertexArray(frameVAO);
 
     bool measureTime = frame % 60 == 0;
     if (measureTime) {
@@ -233,7 +237,21 @@ void MyGLWidget::paintGL()
         glBeginQuery(GL_TIME_ELAPSED, timerQuery);
     }
 
-    glDrawArrays(GL_POINTS, 0, NUM_VERTICES);
+    glm::mat4 camMatrix = glm::identity<glm::mat4>();
+    camMatrix = glm::rotate(camMatrix, camYaw, CAM_UP);
+    camMatrix = glm::rotate(camMatrix, camPitch, CAM_RIGHT);
+
+    camPos += camMatrix * glm::vec4(camVelocity * FLY_SPEED, 0);
+    glm::vec4 camDir = camMatrix * glm::vec4(CAM_FORWARD, 0);
+    glm::vec4 camU = camMatrix * glm::vec4(CAM_RIGHT, 0);
+    glm::vec4 camV = camMatrix * glm::vec4(CAM_UP, 0);
+    glUniform3f(camPosLoc, camPos.x, camPos.y, camPos.z);
+    glUniform3f(camDirLoc, camDir.x, camDir.y, camDir.z);
+    glUniform3f(camULoc, camU.x, camU.y, camU.z);
+    glUniform3f(camVLoc, camV.x, camV.y, camV.z);
+
+
+    glDrawArrays(GL_TRIANGLES, 0, NUM_FRAME_VERTS);
 
     if (measureTime)
         glEndQuery(GL_TIME_ELAPSED);
