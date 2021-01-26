@@ -65,7 +65,7 @@ void MyGLWidget::initializeGL()
     program = glCreateProgram();
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
-    glLinkProgram(program);
+    linkProgramCheck(program, "Program");
     glUseProgram(program);
     // clean up
     glDeleteShader(vertexShader);
@@ -73,6 +73,7 @@ void MyGLWidget::initializeGL()
 
     modelLoc = glGetUniformLocation(program, "Model");
     paletteLoc = glGetUniformLocation(program, "Palette");
+    blockDimLoc = glGetUniformLocation(program, "BlockDim");
     camPosLoc = glGetUniformLocation(program, "CamPos");
     camDirLoc = glGetUniformLocation(program, "CamDir");
     camULoc = glGetUniformLocation(program, "CamU");
@@ -104,7 +105,7 @@ void MyGLWidget::initializeGL()
     glEnableVertexAttribArray(VERT_UV_LOC);
 
 
-    QFile voxModel(":/monu1.xraw");
+    QFile voxModel(":/blocktest.xraw");
     voxModel.open(QIODevice::ReadOnly);
     // XRAW format  https://twitter.com/ephtracy/status/653721698328551424
     // skip header. assume RGBA unsigned byte palette, 8 bits per index
@@ -149,6 +150,7 @@ void MyGLWidget::initializeGL()
     delete[] palette;
     glUniform1i(modelLoc, 0);
     glUniform1i(paletteLoc, 1);
+    glUniform1i(blockDimLoc, xDim);  // cube
 
     glGenQueries(1, &timerQuery);
 }
@@ -169,6 +171,21 @@ void MyGLWidget::compileShaderCheck(GLuint shader, QString name)
         char *log = new char[logLen];
         glGetShaderInfoLog(shader, logLen, NULL, log);
         qCritical() << name << "shader compile error:" << log;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void MyGLWidget::linkProgramCheck(GLuint program, QString name)
+{
+    glLinkProgram(program);
+    GLint linked;
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (!linked) {
+        GLint logLen;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLen);
+        char *log = new char[logLen];
+        glGetProgramInfoLog(program, logLen, NULL, log);
+        qCritical() << name << "link error:" << log;
         exit(EXIT_FAILURE);
     }
 }
@@ -203,8 +220,8 @@ void MyGLWidget::mouseMoveEvent(QMouseEvent *event)
     prevMousePos = pos;
     trackMouse = true;
 
-    camYaw -= glm::radians((float)delta.x());
-    camPitch -= glm::radians((float)delta.y());
+    camYaw -= glm::radians((float)delta.x() * 0.4);
+    camPitch -= glm::radians((float)delta.y() * 0.4);
 }
 
 void MyGLWidget::mouseReleaseEvent(QMouseEvent *event)

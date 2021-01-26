@@ -29,6 +29,7 @@ protected:
 private slots:
     void handleLoggedMessage(const QOpenGLDebugMessage &message);
     void compileShaderCheck(GLuint shader, QString name);
+    void linkProgramCheck(GLuint program, QString name);
     QByteArray loadStringResource(QString filename);
 
 private:
@@ -38,7 +39,8 @@ private:
     GLuint program;
     GLuint timerQuery;
     // shader uniform locations
-    GLint modelLoc, paletteLoc, camPosLoc, camDirLoc, camULoc, camVLoc;
+    GLint modelLoc, paletteLoc, blockDimLoc;
+    GLint camPosLoc, camDirLoc, camULoc, camVLoc;
 
     int frame = 0;
     bool trackMouse = false;

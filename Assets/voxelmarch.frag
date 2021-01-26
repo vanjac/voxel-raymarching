@@ -2,6 +2,7 @@
 
 uniform isampler3D Model;
 uniform sampler1D Palette;
+uniform int BlockDim;
 uniform vec3 CamPos;
 
 in vec3 iRayDir;  // not normalized!!
@@ -12,14 +13,18 @@ const float EPSILON = 0.001;
 
 vec4 raymarch(vec3 origin, vec3 dir)
 {
-    ivec3 modelDim = textureSize(Model, 0);
-    //ivec3 dimMask = modelDim - 1;
+    ivec3 blockOffset = ivec3(0,0,0);
+    int dimMask = BlockDim - 1;
     float t = 0;
       while (t <= 1024) {
         vec3 p = origin + dir * t;
-        int c = textureLod(Model, p / modelDim, 0).r;
-        //int c = texelFetch(Model, ivec3(floor(p)) & dimMask, 0).r;
-        if (c != 0) {
+        int c = texelFetch(Model, (ivec3(floor(p)) & dimMask) + blockOffset, 0).r;
+        if (c >= 128) {
+            origin *= BlockDim;
+            t *= BlockDim;
+            blockOffset = ivec3(0, 0, BlockDim * (c - 128));
+            continue;
+        } else if (c != 0) {
             return texelFetch(Palette, c, 0);
         }
 

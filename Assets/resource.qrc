@@ -4,5 +4,6 @@
         <file>voxelmarch.vert</file>
         <file>chr_knight.xraw</file>
         <file>monu1.xraw</file>
+        <file>blocktest.xraw</file>
     </qresource>
 </RCC>
