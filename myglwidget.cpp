@@ -9,7 +9,7 @@ const GLsizei NUM_FRAME_VERTS = 6;
 const GLuint VERT_POSITION_LOC = 0;
 const GLuint VERT_UV_LOC = 1;
 
-const float FLY_SPEED = 0.6;
+const float FLY_SPEED = 0.2;
 
 const glm::vec3 CAM_FORWARD(1, 0, 0);
 const glm::vec3 CAM_RIGHT(0, -1, 0);
@@ -222,6 +222,11 @@ void MyGLWidget::mouseMoveEvent(QMouseEvent *event)
 
     camYaw -= glm::radians((float)delta.x() * 0.4);
     camPitch -= glm::radians((float)delta.y() * 0.4);
+    float pitchLimit = glm::pi<float>() / 2;
+    if (camPitch > pitchLimit)
+        camPitch = pitchLimit;
+    else if (camPitch < -pitchLimit)
+        camPitch = -pitchLimit;
 }
 
 void MyGLWidget::mouseReleaseEvent(QMouseEvent *event)
