@@ -12,8 +12,8 @@ const GLuint VERT_UV_LOC = 1;
 const float FLY_SPEED = 0.2;
 
 const glm::vec3 CAM_FORWARD(1, 0, 0);
-const glm::vec3 CAM_RIGHT(0, 0, 1);
-const glm::vec3 CAM_UP(0, 1, 0);
+const glm::vec3 CAM_RIGHT(0, -1, 0);
+const glm::vec3 CAM_UP(0, 0, 1);
 
 MyGLWidget::MyGLWidget(QWidget *parent)
     : QOpenGLWidget(parent),
@@ -104,17 +104,31 @@ void MyGLWidget::initializeGL()
     glEnableVertexAttribArray(VERT_UV_LOC);
 
 
-    QImage voxModel(":/chr_knight.bmp");
-    qDebug() << voxModel.format();
-    const uchar *voxData = voxModel.constBits();
-    QList<QRgb> palette = voxModel.colorTable();
-    const QRgb *paletteData = palette.constData();
+    QFile voxModel(":/chr_knight.xraw");
+    voxModel.open(QIODevice::ReadOnly);
+    // XRAW format  https://twitter.com/ephtracy/status/653721698328551424
+    // skip header. assume RGBA unsigned byte palette, 8 bits per index
+    voxModel.seek(8);
+    unsigned int xDim, yDim, zDim;
+    unsigned int paletteSize;
+    voxModel.read((char *)&xDim, 4);
+    voxModel.read((char *)&yDim, 4);
+    voxModel.read((char *)&zDim, 4);
+    voxModel.read((char *)&paletteSize, 4);
+    qDebug() << "Voxel dimensions" << xDim << yDim << zDim;
+    qDebug() << paletteSize << "palette entries";
+    int voxelBufLen = xDim * yDim * zDim;
+    int paletteBufLen = paletteSize * 4;
+    unsigned char *voxData = new unsigned char[voxelBufLen];
+    voxModel.read((char *)voxData, voxelBufLen);
+    unsigned char *palette = new unsigned char[paletteBufLen];
+    voxModel.read((char *)palette, paletteBufLen);
 
     glGenTextures(1, &modelTexture);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_3D, modelTexture);
     // TODO: if you ever upgrade to OpenGL 4.2 switch to glTexStorage
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_R8I, 16, 16, 16, 0,
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, xDim, yDim, zDim, 0,
                  GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxData);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -125,13 +139,14 @@ void MyGLWidget::initializeGL()
     glGenTextures(1, &paletteTexture);
     glActiveTexture(GL_TEXTURE0 + 1);
     glBindTexture(GL_TEXTURE_1D, paletteTexture);
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, palette.size(), 0,
-                 GL_BGRA, GL_UNSIGNED_BYTE, paletteData);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, paletteSize, 0,
+                 GL_RGBA, GL_UNSIGNED_BYTE, palette);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 
-
+    delete[] voxData;
+    delete[] palette;
     glUniform1i(modelLoc, 0);
     glUniform1i(paletteLoc, 1);
 
