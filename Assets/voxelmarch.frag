@@ -16,7 +16,7 @@ vec4 raymarch(vec3 origin, vec3 dir)
       while (t <= 1024) {
         vec3 p = origin + dir * t;
         int c = textureLod(Model, p / 16, 0).r;
-        //vec4 c = texelFetch(Model, ivec3(floor(p)) & 0xF, 0);
+        //int c = texelFetch(Model, ivec3(floor(p)) & 0xF, 0).r;
         if (c != 0) {
             return texelFetch(Palette, c, 0);
         }
