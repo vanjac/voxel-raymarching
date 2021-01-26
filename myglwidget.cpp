@@ -105,8 +105,9 @@ void MyGLWidget::initializeGL()
     glEnableVertexAttribArray(VERT_UV_LOC);
 
 
-    QFile voxModel(":/blocktest.xraw");
+    QFile voxModel(":/minecraft.xraw");
     voxModel.open(QIODevice::ReadOnly);
+
     // XRAW format  https://twitter.com/ephtracy/status/653721698328551424
     // skip header. assume RGBA unsigned byte palette, 8 bits per index
     voxModel.seek(8);
@@ -118,12 +119,19 @@ void MyGLWidget::initializeGL()
     voxModel.read((char *)&paletteSize, 4);
     qDebug() << "Voxel dimensions" << xDim << yDim << zDim;
     qDebug() << paletteSize << "palette entries";
+
     int voxelBufLen = xDim * yDim * zDim;
     int paletteBufLen = paletteSize * 4;
     unsigned char *voxData = new unsigned char[voxelBufLen];
     voxModel.read((char *)voxData, voxelBufLen);
     unsigned char *palette = new unsigned char[paletteBufLen];
     voxModel.read((char *)palette, paletteBufLen);
+
+    float *linearPalette = new float[paletteBufLen];
+    for (int i = 0; i < paletteBufLen; i++)
+        linearPalette[i] = glm::pow(palette[i] / 256.0, 2.2);
+    delete[] palette;
+
 
     glGenTextures(1, &modelTexture);
     glActiveTexture(GL_TEXTURE0);
@@ -141,13 +149,13 @@ void MyGLWidget::initializeGL()
     glActiveTexture(GL_TEXTURE0 + 1);
     glBindTexture(GL_TEXTURE_1D, paletteTexture);
     glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, paletteSize, 0,
-                 GL_RGBA, GL_UNSIGNED_BYTE, palette);
+                 GL_RGBA, GL_FLOAT, linearPalette);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 
     delete[] voxData;
-    delete[] palette;
+    delete[] linearPalette;
     glUniform1i(modelLoc, 0);
     glUniform1i(paletteLoc, 1);
     glUniform1i(blockDimLoc, xDim);  // cube

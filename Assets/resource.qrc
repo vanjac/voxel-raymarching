@@ -5,5 +5,6 @@
         <file>chr_knight.xraw</file>
         <file>monu1.xraw</file>
         <file>blocktest.xraw</file>
+        <file>minecraft.xraw</file>
     </qresource>
 </RCC>

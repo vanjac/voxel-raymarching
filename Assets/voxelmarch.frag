@@ -12,11 +12,11 @@ out vec4 fColor;
 const float EPSILON = 0.001;
 const int MAX_RECURSE_DEPTH = 8;
 
-vec4 raymarch(vec3 origin, vec3 dir)
+int raymarch(vec3 origin, vec3 dir, int air)
 {
     int dimMask = BlockDim - 1;
     float t = 0;
-    float tLimit = 128;
+    float tLimit = 256;
     int blockOffset = 0;
     int recurse = 0;
     float tLimitStack[MAX_RECURSE_DEPTH];
@@ -24,8 +24,8 @@ vec4 raymarch(vec3 origin, vec3 dir)
     while (true) {
         vec3 p = origin + dir * t;
         int c = texelFetch(Model, (ivec3(floor(p)) & dimMask) + ivec3(0, 0, blockOffset), 0).r;
-        if (c < 128 && c != 0) {
-            return texelFetch(Palette, c, 0);
+        if (c < 128 && c != air) {
+            return c;
         }
 
         vec3 deltas = (step(0, dir) - fract(p)) / dir;
@@ -43,7 +43,7 @@ vec4 raymarch(vec3 origin, vec3 dir)
             t = nextT;
             if (t > tLimit) {
                 if (recurse == 0)
-                    return vec4(0);
+                    return 0;
                 recurse--;
                 tLimit = tLimitStack[recurse];
                 blockOffset = blockOffsetStack[recurse];
@@ -56,5 +56,9 @@ vec4 raymarch(vec3 origin, vec3 dir)
 
 void main()
 {
-    fColor = raymarch(CamPos, normalize(iRayDir));
+    int index = raymarch(CamPos, normalize(iRayDir), 0);
+    vec3 c = texelFetch(Palette, index, 0).rgb;
+    // https://www.iquilezles.org/www/articles/outdoorslighting/outdoorslighting.htm
+    c = pow(c, vec3(1.0 / 2.2));
+    fColor = vec4(c, 1.0);
 }
