@@ -9,7 +9,7 @@ const GLsizei NUM_FRAME_VERTS = 6;
 const GLuint VERT_POSITION_LOC = 0;
 const GLuint VERT_UV_LOC = 1;
 
-const float FLY_SPEED = 0.2;
+const float FLY_SPEED = 0.1;
 
 const glm::vec3 CAM_FORWARD(1, 0, 0);
 const glm::vec3 CAM_RIGHT(0, -1, 0);
@@ -105,7 +105,7 @@ void MyGLWidget::initializeGL()
     glEnableVertexAttribArray(VERT_UV_LOC);
 
 
-    QFile voxModel(":/minecraft.xraw");
+    QFile voxModel(":/blocktest.xraw");
     voxModel.open(QIODevice::ReadOnly);
 
     // XRAW format  https://twitter.com/ephtracy/status/653721698328551424
