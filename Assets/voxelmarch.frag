@@ -12,10 +12,9 @@ out vec4 fColor;
 const float EPSILON = 0.001;
 const int MAX_RECURSE_DEPTH = 8;
 
-int raymarch(vec3 origin, vec3 dir, int air)
+int raymarch(vec3 origin, vec3 dir, int air,
+             float maxDist, inout float dist)
 {
-    float dist = 0;
-    float maxDist = 256;
     float scale = 1;
     int blockOffset = 0;
     int recurse = 0;
@@ -55,7 +54,8 @@ int raymarch(vec3 origin, vec3 dir, int air)
 
 void main()
 {
-    int index = raymarch(CamPos, normalize(iRayDir), 0);
+    float dist = 0;
+    int index = raymarch(CamPos, normalize(iRayDir), 0, 256, dist);
     vec3 c = texelFetch(Palette, index, 0).rgb;
     // https://www.iquilezles.org/www/articles/outdoorslighting/outdoorslighting.htm
     c = pow(c, vec3(1.0 / 2.2));
