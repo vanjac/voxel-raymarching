@@ -41,6 +41,7 @@ private:
     // shader uniform locations
     GLint modelLoc, paletteLoc, blockDimLoc;
     GLint camPosLoc, camDirLoc, camULoc, camVLoc;
+    GLint sunDirLoc, sunColorLoc, ambientColorLoc;
 
     int frame = 0;
     bool trackMouse = false;

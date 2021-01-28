@@ -78,6 +78,9 @@ void MyGLWidget::initializeGL()
     camDirLoc = glGetUniformLocation(program, "CamDir");
     camULoc = glGetUniformLocation(program, "CamU");
     camVLoc = glGetUniformLocation(program, "CamV");
+    sunDirLoc = glGetUniformLocation(program, "SunDir");
+    sunColorLoc = glGetUniformLocation(program, "SunColor");
+    ambientColorLoc = glGetUniformLocation(program, "AmbientColor");
 
 
     glGenVertexArrays(1, &frameVAO);
@@ -105,7 +108,7 @@ void MyGLWidget::initializeGL()
     glEnableVertexAttribArray(VERT_UV_LOC);
 
 
-    QFile voxModel(":/blocktest.xraw");
+    QFile voxModel(":/minecraft.xraw");
     voxModel.open(QIODevice::ReadOnly);
 
     // XRAW format  https://twitter.com/ephtracy/status/653721698328551424
@@ -159,6 +162,13 @@ void MyGLWidget::initializeGL()
     glUniform1i(modelLoc, 0);
     glUniform1i(paletteLoc, 1);
     glUniform1i(blockDimLoc, xDim);  // cube
+
+    glm::vec3 sunDir = glm::normalize(glm::vec3(2, 1, -3));
+    glUniform3f(sunDirLoc, sunDir.x, sunDir.y, sunDir.z);
+    glm::vec3 sunColor = 1.5f * glm::vec3(252, 255, 213) / 255.0f;
+    glUniform3f(sunColorLoc, sunColor.x, sunColor.y, sunColor.z);
+    glm::vec3 ambientColor = glm::vec3(58, 75, 105) / 255.0f;
+    glUniform3f(ambientColorLoc, ambientColor.r, ambientColor.g, ambientColor.b);
 
     glGenQueries(1, &timerQuery);
 }
