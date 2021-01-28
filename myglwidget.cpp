@@ -78,9 +78,11 @@ void MyGLWidget::initializeGL()
     camDirLoc = glGetUniformLocation(program, "CamDir");
     camULoc = glGetUniformLocation(program, "CamU");
     camVLoc = glGetUniformLocation(program, "CamV");
+    ambientColorLoc = glGetUniformLocation(program, "AmbientColor");
     sunDirLoc = glGetUniformLocation(program, "SunDir");
     sunColorLoc = glGetUniformLocation(program, "SunColor");
-    ambientColorLoc = glGetUniformLocation(program, "AmbientColor");
+    pointLightPosLoc = glGetUniformLocation(program, "PointLightPos");
+    pointLightColorLoc = glGetUniformLocation(program, "PointLightColor");
 
 
     glGenVertexArrays(1, &frameVAO);
@@ -163,12 +165,15 @@ void MyGLWidget::initializeGL()
     glUniform1i(paletteLoc, 1);
     glUniform1i(blockDimLoc, xDim);  // cube
 
+    glm::vec3 ambientColor = glm::vec3(58, 75, 105) / 255.0f;
+    glUniform3f(ambientColorLoc, ambientColor.r, ambientColor.g, ambientColor.b);
     glm::vec3 sunDir = glm::normalize(glm::vec3(2, 1, -3));
     glUniform3f(sunDirLoc, sunDir.x, sunDir.y, sunDir.z);
     glm::vec3 sunColor = 1.5f * glm::vec3(252, 255, 213) / 255.0f;
     glUniform3f(sunColorLoc, sunColor.x, sunColor.y, sunColor.z);
-    glm::vec3 ambientColor = glm::vec3(58, 75, 105) / 255.0f;
-    glUniform3f(ambientColorLoc, ambientColor.r, ambientColor.g, ambientColor.b);
+    glUniform3f(pointLightPosLoc, 8, 8, 3);
+    glm::vec3 pointColor = 100.0f * glm::vec3(255, 16, 8) / 255.0f;
+    glUniform3f(pointLightColorLoc, pointColor.r, pointColor.g, pointColor.b);
 
     glGenQueries(1, &timerQuery);
 }

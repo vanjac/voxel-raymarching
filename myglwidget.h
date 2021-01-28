@@ -41,13 +41,14 @@ private:
     // shader uniform locations
     GLint modelLoc, paletteLoc, blockDimLoc;
     GLint camPosLoc, camDirLoc, camULoc, camVLoc;
-    GLint sunDirLoc, sunColorLoc, ambientColorLoc;
+    GLint ambientColorLoc, sunDirLoc, sunColorLoc;
+    GLint pointLightPosLoc, pointLightColorLoc;
 
     int frame = 0;
     bool trackMouse = false;
     QPoint prevMousePos;
     float camYaw = 0, camPitch = 0;
-    glm::vec4 camPos = glm::vec4(0,0,0,1);
+    glm::vec4 camPos = glm::vec4(8,8,8,1);
     glm::vec3 camVelocity = glm::vec3(0,0,0);
 
     QOpenGLDebugLogger logger;

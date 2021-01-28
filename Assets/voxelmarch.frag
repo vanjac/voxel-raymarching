@@ -5,9 +5,11 @@ uniform sampler1D Palette;
 uniform int BlockDim;
 uniform vec3 CamPos;
 
+uniform vec3 AmbientColor;
 uniform vec3 SunDir;
 uniform vec3 SunColor;
-uniform vec3 AmbientColor;
+uniform vec3 PointLightPos;
+uniform vec3 PointLightColor;
 
 in vec3 iRayDir;  // not normalized!!
 
@@ -88,15 +90,31 @@ void main()
 
     if (index != INDEX_SKY) {
         vec3 light = AmbientColor;
+        vec3 pos = CamPos + normRayDir * dist;
+
         float sunDot = -dot(normal, SunDir);
         if (sunDot > 0) {
             float shadowDist = BIG_EPSILON;
             vec3 shadowNorm;
-            int shadowIndex = raymarch(CamPos + normRayDir * dist, -SunDir, INDEX_AIR,
+            int shadowIndex = raymarch(pos, -SunDir, INDEX_AIR,
                                        DRAW_DIST, shadowDist, shadowNorm);
             if (shadowIndex == INDEX_AIR || shadowIndex == INDEX_SKY)
                 light += SunColor * sunDot;
         }
+
+        vec3 pointVec = PointLightPos - pos;
+        float pointDist = length(pointVec);
+        vec3 pointDir = pointVec / pointDist;
+        float pointDot = dot(normal, pointDir);
+        if (pointDot > 0) {
+            float shadowDist = BIG_EPSILON;
+            vec3 shadowNorm;
+            int shadowIndex = raymarch(pos, pointDir, INDEX_AIR,
+                                       pointDist, shadowDist, shadowNorm);
+            if (shadowIndex == INDEX_AIR)
+                light += PointLightColor * pointDot / (pointDist * pointDist);
+        }
+
         c *= light;
     }
 
