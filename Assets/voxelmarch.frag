@@ -10,6 +10,7 @@ uniform vec3 SunDir;
 uniform vec3 SunColor;
 uniform vec3 PointLightPos;
 uniform vec3 PointLightColor;
+uniform float PointLightRange;
 
 in vec3 iRayDir;  // not normalized!!
 
@@ -74,7 +75,7 @@ int raymarch(vec3 origin, vec3 dir, int medium,
                 scale /= BlockDim;
             }
         }
-      }
+    }
 }
 
 void main()
@@ -106,7 +107,7 @@ void main()
         float pointDist = length(pointVec);
         vec3 pointDir = pointVec / pointDist;
         float pointDot = dot(normal, pointDir);
-        if (pointDot > 0) {
+        if (pointDot > 0 && pointDist < PointLightRange) {
             float shadowDist = BIG_EPSILON;
             vec3 shadowNorm;
             int shadowIndex = raymarch(pos, pointDir, INDEX_AIR,

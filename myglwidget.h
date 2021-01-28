@@ -42,7 +42,7 @@ private:
     GLint modelLoc, paletteLoc, blockDimLoc;
     GLint camPosLoc, camDirLoc, camULoc, camVLoc;
     GLint ambientColorLoc, sunDirLoc, sunColorLoc;
-    GLint pointLightPosLoc, pointLightColorLoc;
+    GLint pointLightPosLoc, pointLightColorLoc, pointLightRangeLoc;
 
     int frame = 0;
     bool trackMouse = false;

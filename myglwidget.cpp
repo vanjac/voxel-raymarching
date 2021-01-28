@@ -83,6 +83,7 @@ void MyGLWidget::initializeGL()
     sunColorLoc = glGetUniformLocation(program, "SunColor");
     pointLightPosLoc = glGetUniformLocation(program, "PointLightPos");
     pointLightColorLoc = glGetUniformLocation(program, "PointLightColor");
+    pointLightRangeLoc = glGetUniformLocation(program, "PointLightRange");
 
 
     glGenVertexArrays(1, &frameVAO);
@@ -174,6 +175,7 @@ void MyGLWidget::initializeGL()
     glUniform3f(pointLightPosLoc, 8, 8, 3);
     glm::vec3 pointColor = 100.0f * glm::vec3(255, 16, 8) / 255.0f;
     glUniform3f(pointLightColorLoc, pointColor.r, pointColor.g, pointColor.b);
+    glUniform1f(pointLightRangeLoc, 64.0f);
 
     glGenQueries(1, &timerQuery);
 }
