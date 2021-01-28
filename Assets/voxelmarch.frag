@@ -9,38 +9,51 @@ in vec3 iRayDir;  // not normalized!!
 
 out vec4 fColor;
 
-const float EPSILON = 0.001;
+const float EPSILON = 0.0001;
 const int MAX_RECURSE_DEPTH = 8;
 
 int raymarch(vec3 origin, vec3 dir, int air,
-             float maxDist, inout float dist)
+             float maxDist, inout float dist, out vec3 normal)
 {
     float scale = 1;
     int blockOffset = 0;
     int recurse = 0;
     float maxDistStack[MAX_RECURSE_DEPTH];
     int blockOffsetStack[MAX_RECURSE_DEPTH];
+    vec3 lastDeltas = vec3(0,0,0);  // TODO: simplify
+    float lastMinDelta = 0;
     while (true) {
         vec3 p = (origin + dir * dist) * scale;
         int c = texelFetch(Model,
             (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset), 0).r;
         if (c < 128 && c != air) {
+            // TODO: simplify
+            if (lastMinDelta == lastDeltas.z)
+                normal = vec3(0, 0, -sign(dir.z));
+            else if (lastMinDelta == lastDeltas.x)
+                normal = vec3(-sign(dir.x), 0, 0);
+            else if (lastMinDelta == lastDeltas.y)
+                normal = vec3(0, -sign(dir.y), 0);
             return c;
         }
 
         vec3 deltas = (step(0, dir) - fract(p)) / dir / scale;
-        float nextDist = dist + max(min(deltas.x, min(deltas.y, deltas.z)), EPSILON);
+        float minDelta = min(deltas.x, min(deltas.y, deltas.z));
         if (c >= 128) {
             maxDistStack[recurse] = maxDist;
             blockOffsetStack[recurse] = blockOffset;
             recurse++;
             scale *= BlockDim;
-            maxDist = nextDist - EPSILON;
+            maxDist = dist + minDelta - EPSILON;
             blockOffset = BlockDim * (c - 128);
+            // don't store dist or last deltas
         } else {
-            dist = nextDist;
+            dist += max(minDelta, EPSILON);
+            lastDeltas = deltas;
+            lastMinDelta = minDelta;
             if (dist >= maxDist) {
                 if (recurse == 0) {
+                    normal = -dir;
                     return air;
                 }
                 recurse--;
@@ -55,7 +68,8 @@ int raymarch(vec3 origin, vec3 dir, int air,
 void main()
 {
     float dist = 0;
-    int index = raymarch(CamPos, normalize(iRayDir), 0, 256, dist);
+    vec3 normal;
+    int index = raymarch(CamPos, normalize(iRayDir), 0, 256, dist, normal);
     vec3 c = texelFetch(Palette, index, 0).rgb;
     // https://www.iquilezles.org/www/articles/outdoorslighting/outdoorslighting.htm
     c = pow(c, vec3(1.0 / 2.2));
