@@ -28,6 +28,8 @@ const int INDEX_INSTANCE = 128;
 int raymarch(vec3 origin, vec3 dir, int medium,
              float maxDist, inout float dist, out vec3 normal)
 {
+    normal = -dir;
+    bvec3 dirZero = lessThan(abs(dir), vec3(EPSILON));
     float scale = 1;
     int blockOffset = 0;
     int recurse = 0;
@@ -35,7 +37,7 @@ int raymarch(vec3 origin, vec3 dir, int medium,
     int blockOffsetStack[MAX_RECURSE_DEPTH];
     vec3 lastDeltas = vec3(0,0,0);  // TODO: simplify
     float lastMinDelta = 0;
-    while (true) {
+    while (true) {  // TODO iteration limit
         vec3 p = (origin + dir * dist) * scale;
         int c = texelFetch(Model,
             (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset), 0).r;
@@ -51,6 +53,7 @@ int raymarch(vec3 origin, vec3 dir, int medium,
         }
 
         vec3 deltas = (step(0, dir) - fract(p)) / dir / scale;
+        deltas = mix(deltas, vec3(DRAW_DIST), dirZero);
         float minDelta = min(deltas.x, min(deltas.y, deltas.z));
         if (c >= INDEX_INSTANCE) {
             maxDistStack[recurse] = maxDist;
@@ -66,7 +69,6 @@ int raymarch(vec3 origin, vec3 dir, int medium,
             lastMinDelta = minDelta;
             if (dist >= maxDist) {
                 if (recurse == 0) {
-                    normal = -dir;
                     return medium;
                 }
                 recurse--;
