@@ -4,6 +4,7 @@ uniform isampler3D Model;
 uniform sampler1D Palette;
 uniform int BlockDim;
 uniform vec3 CamPos;
+uniform float PixelSize;
 
 uniform vec3 AmbientColor;
 uniform vec3 SunDir;
@@ -41,8 +42,8 @@ int raymarch(vec3 origin, vec3 dir, int medium,
     float lastMinDelta = 0;
     while (true) {  // TODO iteration limit
         vec3 p = (origin + dir * dist) * scale;
-        int c = texelFetch(Model,
-            (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset), 0).r;
+        ivec3 texelCoord = (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset);
+        int c = texelFetch(Model, texelCoord, 0).r;
         if (c < INDEX_INSTANCE && c != medium) {
             normal = mix(vec3(0), -sign(dir), equal(vec3(lastMinDelta), lastDeltas));
             return c;
@@ -87,6 +88,17 @@ float ambientOcclusion(vec3 origin, vec3 dir)
     return factor * factor;
 }
 
+vec3 subPixelRaymarch(vec3 origin, vec3 dir)
+{
+    float dist = 0;
+    vec3 normal;
+    int index = raymarch(origin, dir, INDEX_AIR,
+                         DRAW_DIST, dist, normal);
+    if (index == INDEX_AIR)
+        index = INDEX_SKY;
+    return texelFetch(Palette, index, 0).rgb;
+}
+
 void main()
 {
     vec3 normRayDir = normalize(iRayDir);
@@ -102,10 +114,12 @@ void main()
         vec3 light = AmbientColor;
         vec3 pos = CamPos + normRayDir * dist;
 
+        // TODO requires normal to be axis aligned
         vec3 ambOccAxis1 = mix(vec3(0), vec3(1), equal(normal, vec3(0)));
         vec3 ambOccAxis2 = mix(ambOccAxis1, vec3(-1), notEqual(normal.zxy, vec3(0)));
         // cast short feeler rays in 4 directions
         // rays move diagonally on all axes, and away from surface
+        // TODO cast horizontal to surface instead?
         c *= 1 - AMBIENT_OCC_AMOUNT * max(max(max(
             ambientOcclusion(pos, (normal + ambOccAxis1) / sqrt(3)),
             ambientOcclusion(pos, (normal - ambOccAxis1) / sqrt(3))),

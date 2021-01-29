@@ -40,7 +40,7 @@ private:
     GLuint timerQuery;
     // shader uniform locations
     GLint modelLoc, paletteLoc, blockDimLoc;
-    GLint camPosLoc, camDirLoc, camULoc, camVLoc;
+    GLint camPosLoc, camDirLoc, camULoc, camVLoc, pixelSizeLoc;
     GLint ambientColorLoc, sunDirLoc, sunColorLoc;
     GLint pointLightPosLoc, pointLightColorLoc, pointLightRangeLoc;
 

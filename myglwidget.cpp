@@ -78,6 +78,7 @@ void MyGLWidget::initializeGL()
     camDirLoc = glGetUniformLocation(program, "CamDir");
     camULoc = glGetUniformLocation(program, "CamU");
     camVLoc = glGetUniformLocation(program, "CamV");
+    pixelSizeLoc = glGetUniformLocation(program, "PixelSize");
     ambientColorLoc = glGetUniformLocation(program, "AmbientColor");
     sunDirLoc = glGetUniformLocation(program, "SunDir");
     sunColorLoc = glGetUniformLocation(program, "SunColor");
@@ -172,7 +173,7 @@ void MyGLWidget::initializeGL()
     glUniform3f(sunDirLoc, sunDir.x, sunDir.y, sunDir.z);
     glm::vec3 sunColor = 1.5f * glm::vec3(252, 255, 213) / 255.0f;
     glUniform3f(sunColorLoc, sunColor.x, sunColor.y, sunColor.z);
-    glUniform3f(pointLightPosLoc, 8, 8, 3);
+    glUniform3f(pointLightPosLoc, 8.5, 8.5, 3.5);
     glm::vec3 pointColor = 100.0f * glm::vec3(255, 16, 8) / 255.0f;
     glUniform3f(pointLightColorLoc, pointColor.r, pointColor.g, pointColor.b);
     glUniform1f(pointLightRangeLoc, 64.0f);
@@ -303,17 +304,6 @@ void MyGLWidget::paintGL()
 {
     glBindVertexArray(frameVAO);
 
-    bool measureTime = frame % 60 == 0;
-    if (measureTime) {
-        // measure render time
-        if (frame != 0) {
-            GLuint nanoseconds;
-            glGetQueryObjectuiv(timerQuery, GL_QUERY_RESULT, &nanoseconds);
-            qDebug() << (nanoseconds / 1000) << "us";
-        }
-        glBeginQuery(GL_TIME_ELAPSED, timerQuery);
-    }
-
     glm::mat4 camMatrix = glm::identity<glm::mat4>();
     camMatrix = glm::rotate(camMatrix, camYaw, CAM_UP);
     camMatrix = glm::rotate(camMatrix, camPitch, CAM_RIGHT);
@@ -326,7 +316,18 @@ void MyGLWidget::paintGL()
     glUniform3f(camDirLoc, camDir.x, camDir.y, camDir.z);
     glUniform3f(camULoc, camU.x, camU.y, camU.z);
     glUniform3f(camVLoc, camV.x, camV.y, camV.z);
+    glUniform1f(pixelSizeLoc, 2.0 / height());
 
+    bool measureTime = frame % 60 == 0;
+    if (measureTime) {
+        // measure render time
+        if (frame != 0) {
+            GLuint nanoseconds;
+            glGetQueryObjectuiv(timerQuery, GL_QUERY_RESULT, &nanoseconds);
+            qDebug() << (nanoseconds / 1000) << "us";
+        }
+        glBeginQuery(GL_TIME_ELAPSED, timerQuery);
+    }
 
     glDrawArrays(GL_TRIANGLES, 0, NUM_FRAME_VERTS);
 
