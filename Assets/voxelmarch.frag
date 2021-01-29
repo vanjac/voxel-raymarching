@@ -42,13 +42,7 @@ int raymarch(vec3 origin, vec3 dir, int medium,
         int c = texelFetch(Model,
             (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset), 0).r;
         if (c < INDEX_INSTANCE && c != medium) {
-            // TODO: simplify
-            if (lastMinDelta == lastDeltas.z)
-                normal = vec3(0, 0, -sign(dir.z));
-            else if (lastMinDelta == lastDeltas.x)
-                normal = vec3(-sign(dir.x), 0, 0);
-            else if (lastMinDelta == lastDeltas.y)
-                normal = vec3(0, -sign(dir.y), 0);
+            normal = mix(vec3(0), -sign(dir), equal(vec3(lastMinDelta), lastDeltas));
             return c;
         }
 
