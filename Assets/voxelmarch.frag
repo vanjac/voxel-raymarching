@@ -20,6 +20,8 @@ const float EPSILON = 0.0001;
 const float BIG_EPSILON = 0.001;
 const int MAX_RECURSE_DEPTH = 8;
 const float DRAW_DIST = 256;
+const float AMBIENT_OCC_DIST = 1;  // diagonal
+const float AMBIENT_OCC_AMOUNT = 0.7;
 
 const int INDEX_AIR = 0;
 const int INDEX_SKY = 127;
@@ -74,6 +76,17 @@ int raymarch(vec3 origin, vec3 dir, int medium,
     }
 }
 
+float ambientOcclusion(vec3 origin, vec3 dir)
+{
+    vec3 normal;
+    float dist = BIG_EPSILON;
+    int index = raymarch(origin, dir, 0, AMBIENT_OCC_DIST, dist, normal);
+    if (index == INDEX_AIR || index == INDEX_SKY)
+        return 0;
+    float factor = 1 - dist / AMBIENT_OCC_DIST;
+    return factor * factor;
+}
+
 void main()
 {
     vec3 normRayDir = normalize(iRayDir);
@@ -88,6 +101,16 @@ void main()
     if (index != INDEX_SKY) {
         vec3 light = AmbientColor;
         vec3 pos = CamPos + normRayDir * dist;
+
+        vec3 ambOccAxis1 = mix(vec3(0), vec3(1), equal(normal, vec3(0)));
+        vec3 ambOccAxis2 = mix(ambOccAxis1, vec3(-1), notEqual(normal.zxy, vec3(0)));
+        // cast short feeler rays in 4 directions
+        // rays move diagonally on all axes, and away from surface
+        c *= 1 - AMBIENT_OCC_AMOUNT * max(max(max(
+            ambientOcclusion(pos, (normal + ambOccAxis1) / sqrt(3)),
+            ambientOcclusion(pos, (normal - ambOccAxis1) / sqrt(3))),
+            ambientOcclusion(pos, (normal + ambOccAxis2) / sqrt(3))),
+            ambientOcclusion(pos, (normal - ambOccAxis2) / sqrt(3)));
 
         float sunDot = -dot(normal, SunDir);
         if (sunDot > 0) {
