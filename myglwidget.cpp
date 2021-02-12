@@ -71,21 +71,7 @@ void MyGLWidget::initializeGL()
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
-    modelLoc = glGetUniformLocation(program, "Model");
-    paletteLoc = glGetUniformLocation(program, "Palette");
-    blockDimLoc = glGetUniformLocation(program, "BlockDim");
-    camPosLoc = glGetUniformLocation(program, "CamPos");
-    camDirLoc = glGetUniformLocation(program, "CamDir");
-    camULoc = glGetUniformLocation(program, "CamU");
-    camVLoc = glGetUniformLocation(program, "CamV");
-    pixelSizeLoc = glGetUniformLocation(program, "PixelSize");
-    ambientColorLoc = glGetUniformLocation(program, "AmbientColor");
-    sunDirLoc = glGetUniformLocation(program, "SunDir");
-    sunColorLoc = glGetUniformLocation(program, "SunColor");
-    pointLightPosLoc = glGetUniformLocation(program, "PointLightPos");
-    pointLightColorLoc = glGetUniformLocation(program, "PointLightColor");
-    pointLightRangeLoc = glGetUniformLocation(program, "PointLightRange");
-
+    getProgramUniforms(program);
 
     glGenVertexArrays(1, &frameVAO);
     glBindVertexArray(frameVAO);
@@ -112,7 +98,43 @@ void MyGLWidget::initializeGL()
     glEnableVertexAttribArray(VERT_UV_LOC);
 
 
-    QFile voxModel(":/minecraft.xraw");
+    loadXRAWModel(":/minecraft.xraw");
+
+    glm::vec3 ambientColor = glm::vec3(58, 75, 105) / 255.0f;
+    glUniform3f(ambientColorLoc, ambientColor.r, ambientColor.g, ambientColor.b);
+    glm::vec3 sunDir = glm::normalize(glm::vec3(2, 1, -3));
+    glUniform3f(sunDirLoc, sunDir.x, sunDir.y, sunDir.z);
+    glm::vec3 sunColor = 1.5f * glm::vec3(252, 255, 213) / 255.0f;
+    glUniform3f(sunColorLoc, sunColor.x, sunColor.y, sunColor.z);
+    glUniform3f(pointLightPosLoc, 8.5, 8.5, 3.5);
+    glm::vec3 pointColor = 100.0f * glm::vec3(255, 16, 8) / 255.0f;
+    glUniform3f(pointLightColorLoc, pointColor.r, pointColor.g, pointColor.b);
+    glUniform1f(pointLightRangeLoc, 64.0f);
+
+    glGenQueries(1, &timerQuery);
+}
+
+void MyGLWidget::getProgramUniforms(GLuint program)
+{
+    modelLoc = glGetUniformLocation(program, "Model");
+    paletteLoc = glGetUniformLocation(program, "Palette");
+    blockDimLoc = glGetUniformLocation(program, "BlockDim");
+    camPosLoc = glGetUniformLocation(program, "CamPos");
+    camDirLoc = glGetUniformLocation(program, "CamDir");
+    camULoc = glGetUniformLocation(program, "CamU");
+    camVLoc = glGetUniformLocation(program, "CamV");
+    pixelSizeLoc = glGetUniformLocation(program, "PixelSize");
+    ambientColorLoc = glGetUniformLocation(program, "AmbientColor");
+    sunDirLoc = glGetUniformLocation(program, "SunDir");
+    sunColorLoc = glGetUniformLocation(program, "SunColor");
+    pointLightPosLoc = glGetUniformLocation(program, "PointLightPos");
+    pointLightColorLoc = glGetUniformLocation(program, "PointLightColor");
+    pointLightRangeLoc = glGetUniformLocation(program, "PointLightRange");
+}
+
+void MyGLWidget::loadXRAWModel(QString filename)
+{
+    QFile voxModel(filename);
     voxModel.open(QIODevice::ReadOnly);
 
     // XRAW format  https://twitter.com/ephtracy/status/653721698328551424
@@ -163,23 +185,11 @@ void MyGLWidget::initializeGL()
 
     delete[] voxData;
     delete[] linearPalette;
-    glUniform1i(modelLoc, 0);
-    glUniform1i(paletteLoc, 1);
+    glUniform1i(modelLoc, 0);  // TEXTURE0
+    glUniform1i(paletteLoc, 1);  // TEXTURE1
     glUniform1i(blockDimLoc, xDim);  // cube
-
-    glm::vec3 ambientColor = glm::vec3(58, 75, 105) / 255.0f;
-    glUniform3f(ambientColorLoc, ambientColor.r, ambientColor.g, ambientColor.b);
-    glm::vec3 sunDir = glm::normalize(glm::vec3(2, 1, -3));
-    glUniform3f(sunDirLoc, sunDir.x, sunDir.y, sunDir.z);
-    glm::vec3 sunColor = 1.5f * glm::vec3(252, 255, 213) / 255.0f;
-    glUniform3f(sunColorLoc, sunColor.x, sunColor.y, sunColor.z);
-    glUniform3f(pointLightPosLoc, 8.5, 8.5, 3.5);
-    glm::vec3 pointColor = 100.0f * glm::vec3(255, 16, 8) / 255.0f;
-    glUniform3f(pointLightColorLoc, pointColor.r, pointColor.g, pointColor.b);
-    glUniform1f(pointLightRangeLoc, 64.0f);
-
-    glGenQueries(1, &timerQuery);
 }
+
 
 void MyGLWidget::handleLoggedMessage(const QOpenGLDebugMessage &message)
 {
@@ -257,6 +267,7 @@ void MyGLWidget::mouseMoveEvent(QMouseEvent *event)
 
 void MyGLWidget::mouseReleaseEvent(QMouseEvent *event)
 {
+    Q_UNUSED(event);
     trackMouse = false;
 }
 

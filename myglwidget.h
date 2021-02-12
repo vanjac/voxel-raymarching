@@ -26,11 +26,15 @@ protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
 
-private slots:
-    void handleLoggedMessage(const QOpenGLDebugMessage &message);
+    void getProgramUniforms(GLuint program);
+    void loadXRAWModel(QString filename);
+
     void compileShaderCheck(GLuint shader, QString name);
     void linkProgramCheck(GLuint program, QString name);
     QByteArray loadStringResource(QString filename);
+
+private slots:
+    void handleLoggedMessage(const QOpenGLDebugMessage &message);
 
 private:
     GLuint frameVAO;
