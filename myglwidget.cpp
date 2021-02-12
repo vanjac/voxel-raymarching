@@ -9,7 +9,7 @@ const GLsizei NUM_FRAME_VERTS = 6;
 const GLuint VERT_POSITION_LOC = 0;
 const GLuint VERT_UV_LOC = 1;
 
-const float FLY_SPEED = 0.05;
+const float FLY_SPEED = 0.05f;
 
 const glm::vec3 CAM_FORWARD(1, 0, 0);
 const glm::vec3 CAM_RIGHT(0, -1, 0);
@@ -76,6 +76,7 @@ void MyGLWidget::initializeGL()
     glGenVertexArrays(1, &frameVAO);
     glBindVertexArray(frameVAO);
 
+    // just a rectangle to fill the screen
     GLfloat vertices[NUM_FRAME_VERTS][2] {
         {-1, -1}, {1, -1}, {-1, 1},
         {1, 1}, {-1, 1}, {1, -1}
@@ -88,6 +89,8 @@ void MyGLWidget::initializeGL()
                           GL_FALSE, 0, (void *)0);
     glEnableVertexAttribArray(VERT_POSITION_LOC);
 
+    // UV coordinates specify a portion of normalized device coordinates
+    // changes with the aspect ratio in resizeGL()
     glGenBuffers(1, &frameUVBuffer);
     glBindBuffer(GL_ARRAY_BUFFER, frameUVBuffer);
     // default aspect ratio (1, 1)
@@ -100,6 +103,7 @@ void MyGLWidget::initializeGL()
 
     loadXRAWModel(":/minecraft.xraw");
 
+    // default uniform values
     glm::vec3 ambientColor = glm::vec3(58, 75, 105) / 255.0f;
     glUniform3f(ambientColorLoc, ambientColor.r, ambientColor.g, ambientColor.b);
     glm::vec3 sunDir = glm::normalize(glm::vec3(2, 1, -3));
@@ -111,6 +115,7 @@ void MyGLWidget::initializeGL()
     glUniform3f(pointLightColorLoc, pointColor.r, pointColor.g, pointColor.b);
     glUniform1f(pointLightRangeLoc, 64.0f);
 
+    // used to measure frame time
     glGenQueries(1, &timerQuery);
 }
 
@@ -238,6 +243,7 @@ QByteArray MyGLWidget::loadStringResource(QString filename)
 
 void MyGLWidget::resizeGL(int w, int h)
 {
+    // update UV coordinates to match aspect ratio
     float aspect = (float)w / h;
     GLfloat uv[NUM_FRAME_VERTS][2] {
         {-aspect, -1}, {aspect, -1}, {-aspect, 1},
@@ -256,6 +262,7 @@ void MyGLWidget::mouseMoveEvent(QMouseEvent *event)
     prevMousePos = pos;
     trackMouse = true;
 
+    // move the camera
     camYaw -= glm::radians((float)delta.x() * 0.4);
     camPitch -= glm::radians((float)delta.y() * 0.4);
     float pitchLimit = glm::pi<float>() / 2;
@@ -319,7 +326,9 @@ void MyGLWidget::paintGL()
     camMatrix = glm::rotate(camMatrix, camYaw, CAM_UP);
     camMatrix = glm::rotate(camMatrix, camPitch, CAM_RIGHT);
 
+    // apply velocity
     camPos += camMatrix * glm::vec4(camVelocity * FLY_SPEED, 0);
+
     glm::vec4 camDir = camMatrix * glm::vec4(CAM_FORWARD, 0);
     glm::vec4 camU = camMatrix * glm::vec4(CAM_RIGHT, 0);
     glm::vec4 camV = camMatrix * glm::vec4(CAM_UP, 0);

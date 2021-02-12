@@ -18,19 +18,24 @@ public:
     ~MyGLWidget();
 
 protected:
+    // QOpenGLWidget events
     void initializeGL() override;
     void resizeGL(int w, int h) override;
     void paintGL() override;
+    // general widget events
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
 
+    // get the locations of each uniform
     void getProgramUniforms(GLuint program);
     void loadXRAWModel(QString filename);
 
+    // OpenGL helper functions
     void compileShaderCheck(GLuint shader, QString name);
     void linkProgramCheck(GLuint program, QString name);
+    // Qt IO helper function
     QByteArray loadStringResource(QString filename);
 
 private slots:
