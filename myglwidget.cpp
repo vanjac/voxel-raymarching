@@ -137,6 +137,31 @@ void MyGLWidget::getProgramUniforms(GLuint program)
     pointLightRangeLoc = glGetUniformLocation(program, "PointLightRange");
 }
 
+#define UDF_INDEX(x, y, z, dim) (((x) + (dim)*(y) + (dim)*(dim)*(z)) * 2)
+
+bool IsFilled(unsigned char *udfVoxData, int dim, int zOffset,
+              int cx, int cy, int cz, int size, int value)
+{
+    int minX = cx - size, minY = cy - size, minZ = cz - size;
+    int maxX = cx + size, maxY = cy + size, maxZ = cz + size;
+    for (int z = minZ; z <= maxZ; z++) {
+        for (int y = minY; y <= maxY; y++) {
+            for (int x = minX; x <= maxX; x++) {
+                if (glm::length(glm::vec3( glm::max(glm::abs(x - cx) - 1, 0),
+                                           glm::max(glm::abs(y - cy) - 1, 0),
+                                           glm::max(glm::abs(z - cz) - 1, 0) ))
+                        >= size + 0.01)
+                    continue;
+                int index = UDF_INDEX((x + dim) % dim, (y + dim) % dim,
+                                      (z + dim) % dim + zOffset, dim);
+                if (udfVoxData[index] != value)
+                    return false;
+            }
+        }
+    }
+    return true;
+}
+
 void MyGLWidget::loadXRAWModel(QString filename)
 {
     QFile voxModel(filename);
@@ -145,8 +170,8 @@ void MyGLWidget::loadXRAWModel(QString filename)
     // XRAW format  https://twitter.com/ephtracy/status/653721698328551424
     // skip header. assume RGBA unsigned byte palette, 8 bits per index
     voxModel.seek(8);
-    unsigned int xDim, yDim, zDim;
-    unsigned int paletteSize;
+    int xDim, yDim, zDim;
+    int paletteSize;
     voxModel.read((char *)&xDim, 4);
     voxModel.read((char *)&yDim, 4);
     voxModel.read((char *)&zDim, 4);
@@ -166,13 +191,41 @@ void MyGLWidget::loadXRAWModel(QString filename)
         linearPalette[i] = glm::pow(palette[i] / 256.0, 2.2);
     delete[] palette;
 
+    unsigned char *udfVoxData = new unsigned char[voxelBufLen * 2];
+    for (int i = 0; i < voxelBufLen; i++) {
+        udfVoxData[i * 2] = voxData[i];
+        udfVoxData[i * 2 + 1] = 0;
+    }
+
+    // very slow brute force!!
+    // assume cubic blocks stacked on the z axis
+    for (int blockOffset = 0; blockOffset < 80; blockOffset += xDim) {
+        for (int z = 0; z < xDim; z++) {
+            for (int y = 0; y < xDim; y++) {
+                for (int x = 0; x < xDim; x++) {
+                    int index = UDF_INDEX(x, y, z + blockOffset, xDim);
+                    int value = udfVoxData[index];
+                    int size;
+                    for (size = 1; size < xDim; size++) {
+                        if (!IsFilled(udfVoxData, xDim, blockOffset,
+                                      x, y, z, size, value)) {
+                            break;
+                        }
+                    }
+                    size--;
+                    udfVoxData[index + 1] = size;
+                }
+            }
+        }
+    }
+
 
     glGenTextures(1, &modelTexture);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_3D, modelTexture);
     // TODO: if you ever upgrade to OpenGL 4.2 switch to glTexStorage
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, xDim, yDim, zDim, 0,
-                 GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxData);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RG8UI, xDim, yDim, zDim, 0,
+                 GL_RG_INTEGER, GL_UNSIGNED_BYTE, udfVoxData);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);

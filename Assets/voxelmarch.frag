@@ -43,25 +43,27 @@ int raymarch(vec3 origin, vec3 dir, int medium,
     while (true) {  // TODO iteration limit
         vec3 p = (origin + dir * dist) * scale;
         ivec3 texelCoord = (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset);
-        int c = texelFetch(Model, texelCoord, 0).r;
-        if (c < INDEX_INSTANCE && c != medium) {
+        ivec2 c = texelFetch(Model, texelCoord, 0).rg;
+        if (c.r < INDEX_INSTANCE && c.r != medium) {
             normal = mix(vec3(0), -sign(dir), equal(vec3(lastMinDelta), lastDeltas));
-            return c;
+            return c.r;
         }
 
         vec3 deltas = (step(0, dir) - fract(p)) / dir / scale;
         deltas = mix(deltas, vec3(DRAW_DIST), dirZero);
         float minDelta = min(deltas.x, min(deltas.y, deltas.z));
-        if (c >= INDEX_INSTANCE) {
+        if (c.r >= INDEX_INSTANCE) {
             maxDistStack[recurse] = maxDist;
             blockOffsetStack[recurse] = blockOffset;
             recurse++;
             scale *= BlockDim;
+            // needs to end at voxel edge so don't include c.g
+            // TODO optimize for multiple instances in a row
             maxDist = dist + minDelta - EPSILON;
-            blockOffset = BlockDim * (c - INDEX_INSTANCE);
+            blockOffset = BlockDim * (c.r - INDEX_INSTANCE);
             // don't store dist or last deltas
         } else {
-            dist += max(minDelta, EPSILON);
+            dist += max(minDelta + c.g / scale, EPSILON);
             lastDeltas = deltas;
             lastMinDelta = minDelta;
             if (dist >= maxDist) {
