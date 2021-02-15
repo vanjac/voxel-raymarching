@@ -10,6 +10,8 @@
 #include <QKeyEvent>
 #include <glm/glm.hpp>
 
+#include "voxloader.h"
+
 class MyGLWidget : public QOpenGLWidget, protected QOpenGLExtraFunctions
 {
     Q_OBJECT
@@ -30,7 +32,7 @@ protected:
 
     // get the locations of each uniform
     void getProgramUniforms(GLuint program);
-    void loadXRAWModel(QString filename);
+    void uploadVoxelData(const VoxPack &pack);
 
     // OpenGL helper functions
     void compileShaderCheck(GLuint shader, QString name);

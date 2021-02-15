@@ -12,12 +12,14 @@ SOURCES += \
     main.cpp \
     mainwindow.cpp \
     myglwidget.cpp \
-    opengllog.cpp
+    opengllog.cpp \
+    voxloader.cpp
 
 HEADERS += \
     mainwindow.h \
     myglwidget.h \
-    opengllog.h
+    opengllog.h \
+    voxloader.h
 
 FORMS +=
 

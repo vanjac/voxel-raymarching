@@ -6,5 +6,6 @@
         <file>monu1.xraw</file>
         <file>blocktest.xraw</file>
         <file>minecraft.xraw</file>
+        <file>minecraft.vox</file>
     </qresource>
 </RCC>

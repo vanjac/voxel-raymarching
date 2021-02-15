@@ -100,8 +100,11 @@ void MyGLWidget::initializeGL()
                           GL_FALSE, 0, (void *)0);
     glEnableVertexAttribArray(VERT_UV_LOC);
 
-
-    loadXRAWModel(":/minecraft.xraw");
+    {
+        VoxLoader voxload(":/minecraft.vox");
+        voxload.load();
+        uploadVoxelData(voxload.pack);
+    }
 
     // default uniform values
     glm::vec3 ambientColor = glm::vec3(58, 75, 105) / 255.0f;
@@ -162,45 +165,24 @@ bool IsFilled(unsigned char *udfVoxData, int dim, int zOffset,
     return true;
 }
 
-void MyGLWidget::loadXRAWModel(QString filename)
+void MyGLWidget::uploadVoxelData(const VoxPack &pack)
 {
-    QFile voxModel(filename);
-    voxModel.open(QIODevice::ReadOnly);
+    const VoxModel &model = pack.models[0];
 
-    // XRAW format  https://twitter.com/ephtracy/status/653721698328551424
-    // skip header. assume RGBA unsigned byte palette, 8 bits per index
-    voxModel.seek(8);
-    int xDim, yDim, zDim;
-    int paletteSize;
-    voxModel.read((char *)&xDim, 4);
-    voxModel.read((char *)&yDim, 4);
-    voxModel.read((char *)&zDim, 4);
-    voxModel.read((char *)&paletteSize, 4);
-    qDebug() << "Voxel dimensions" << xDim << yDim << zDim;
-    qDebug() << paletteSize << "palette entries";
-
-    int voxelBufLen = xDim * yDim * zDim;
-    int paletteBufLen = paletteSize * 4;
-    unsigned char *voxData = new unsigned char[voxelBufLen];
-    voxModel.read((char *)voxData, voxelBufLen);
-    unsigned char *palette = new unsigned char[paletteBufLen];
-    voxModel.read((char *)palette, paletteBufLen);
-
-    float *linearPalette = new float[paletteBufLen];
-    for (int i = 0; i < paletteBufLen; i++)
-        linearPalette[i] = glm::pow(palette[i] / 256.0, 2.2);
-    delete[] palette;
+    int numVoxels = model.numVoxels();
+    int xDim = model.xDim;
 
     // distance field stores the minimum distance from the *edge* of this voxel
     // to the *edge* of a voxel of a different value
-    unsigned char *udfVoxData = new unsigned char[voxelBufLen * 2];
-    for (int i = 0; i < voxelBufLen; i++) {
-        udfVoxData[i * 2] = voxData[i];
+    unsigned char *udfVoxData = new unsigned char[numVoxels * 2];
+    for (int i = 0; i < numVoxels; i++) {
+        udfVoxData[i * 2] = model.data[i];
         udfVoxData[i * 2 + 1] = 0;
     }
 
     // very slow brute force!!
     // assume cubic blocks stacked on the z axis
+    // TODO: hardcoded max offset
     for (int blockOffset = 0; blockOffset < 80; blockOffset += xDim) {
         for (int z = 0; z < xDim; z++) {
             for (int y = 0; y < xDim; y++) {
@@ -226,7 +208,7 @@ void MyGLWidget::loadXRAWModel(QString filename)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_3D, modelTexture);
     // TODO: if you ever upgrade to OpenGL 4.2 switch to glTexStorage
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RG8UI, xDim, yDim, zDim, 0,
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RG8UI, model.xDim, model.yDim, model.zDim, 0,
                  GL_RG_INTEGER, GL_UNSIGNED_BYTE, udfVoxData);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -237,14 +219,12 @@ void MyGLWidget::loadXRAWModel(QString filename)
     glGenTextures(1, &paletteTexture);
     glActiveTexture(GL_TEXTURE0 + 1);
     glBindTexture(GL_TEXTURE_1D, paletteTexture);
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, paletteSize, 0,
-                 GL_RGBA, GL_FLOAT, linearPalette);
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, PALETTE_SIZE, 0,
+                 GL_RGBA, GL_FLOAT, pack.palette);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 
-    delete[] voxData;
-    delete[] linearPalette;
     glUniform1i(modelLoc, 0);  // TEXTURE0
     glUniform1i(paletteLoc, 1);  // TEXTURE1
     glUniform1i(blockDimLoc, xDim);  // cube
