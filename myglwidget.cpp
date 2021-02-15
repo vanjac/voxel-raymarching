@@ -102,7 +102,10 @@ void MyGLWidget::initializeGL()
 
     {
         VoxLoader voxload(":/minecraft.vox");
-        voxload.load();
+        if (!voxload.load()) {
+            qWarning() << "Error loading file";
+            exit(EXIT_FAILURE);
+        }
         uploadVoxelData(voxload.pack);
     }
 
@@ -216,6 +219,7 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
     // TODO: if you ever upgrade to OpenGL 4.2 switch to glTexStorage
     glTexImage3D(GL_TEXTURE_3D, 0, GL_RG8UI, blockSize, blockSize, texZDim, 0,
                  GL_RG_INTEGER, GL_UNSIGNED_BYTE, udfVoxData);
+    delete[] udfVoxData;
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -253,6 +257,7 @@ void MyGLWidget::compileShaderCheck(GLuint shader, QString name)
         char *log = new char[logLen];
         glGetShaderInfoLog(shader, logLen, NULL, log);
         qCritical() << name << "shader compile error:" << log;
+        delete[] log;
         exit(EXIT_FAILURE);
     }
 }
@@ -268,6 +273,7 @@ void MyGLWidget::linkProgramCheck(GLuint program, QString name)
         char *log = new char[logLen];
         glGetProgramInfoLog(program, logLen, NULL, log);
         qCritical() << name << "link error:" << log;
+        delete[] log;
         exit(EXIT_FAILURE);
     }
 }
