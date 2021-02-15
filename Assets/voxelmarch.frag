@@ -59,11 +59,8 @@ int raymarch(vec3 origin, vec3 dir, int medium,
                     int(normalBits.x) | (int(normalBits.y) << 1) | (int(normalBits.z) << 2);
             recurse++;
             scale *= BlockDim;
-            // needs to end at voxel edge so don't include c.g
-            // TODO optimize for multiple instances in a row
             maxDist = nextDist;
             blockOffset = BlockDim * (c.r - INDEX_INSTANCE);
-            // don't store dist or last deltas
         } else {
             dist = nextDist;
             while (dist >= maxDist - EPSILON) {
