@@ -145,7 +145,7 @@ void MyGLWidget::getProgramUniforms(GLuint program)
 
 #define UDF_INDEX(x, y, z, dim) (((x) + (dim)*(y) + (dim)*(dim)*(z)) * 2)
 
-bool IsFilled(unsigned char *udfVoxData, int dim, int zOffset,
+bool IsFilled(unsigned char *udfVoxData, int dim, int offset,
               int cx, int cy, int cz, int size, int value)
 {
     int minX = cx - size, minY = cy - size, minZ = cz - size;
@@ -159,7 +159,7 @@ bool IsFilled(unsigned char *udfVoxData, int dim, int zOffset,
                         >= size + 0.01)
                     continue;
                 int index = UDF_INDEX((x + dim) % dim, (y + dim) % dim,
-                                      (z + dim) % dim + zOffset, dim);
+                                      (z + dim) % dim, dim) + offset;
                 if (udfVoxData[index] != value)
                     return false;
             }
@@ -170,37 +170,37 @@ bool IsFilled(unsigned char *udfVoxData, int dim, int zOffset,
 
 void MyGLWidget::uploadVoxelData(const VoxPack &pack)
 {
-    const VoxModel &model = pack.models[0];
-
-    int numVoxels = model.xDim * model.yDim * model.zDim;
-    // assume cubic blocks stacked on the z axis
-    int blockSize = model.xDim;
+    // assume cubic blocks all of equal size
+    int blockSize = pack.orderedModels[0]->xDim;
+    int numBlocks = pack.orderedModels.size();
+    // stack blocks on the z axis
     // round up to the nearest power of two (min 8)
     int texZDim = 8;
-    while (texZDim < model.zDim)
+    while (texZDim < blockSize * numBlocks)
         texZDim *= 2;
 
     qDebug() << "Texture size:" << blockSize << blockSize << texZDim;
-
     // distance field stores the minimum distance from the *edge* of this voxel
     // to the *edge* of a voxel of a different value
     unsigned char *udfVoxData = new unsigned char[blockSize * blockSize * texZDim * 2];
-    for (int i = 0; i < numVoxels; i++) {
-        udfVoxData[i * 2] = model.data[i];
-        udfVoxData[i * 2 + 1] = 0;
-    }
 
-    // very slow brute force!!
-    // assume cubic blocks stacked on the z axis
-    for (int blockOffset = 0; blockOffset < model.zDim; blockOffset += blockSize) {
+    for (int blockI = 0; blockI < numBlocks; blockI++) {
+        int udfOffset = UDF_INDEX(0, 0, blockI * blockSize, blockSize);
+        VoxModel &model = *pack.orderedModels[blockI];
+        int numVoxels = model.xDim * model.yDim * model.zDim;
+        for (int i = 0; i < numVoxels; i++) {
+            udfVoxData[udfOffset + i * 2] = model.data[i];
+        }
+
+        // very slow brute force!!
         for (int z = 0; z < blockSize; z++) {
             for (int y = 0; y < blockSize; y++) {
                 for (int x = 0; x < blockSize; x++) {
-                    int index = UDF_INDEX(x, y, z + blockOffset, blockSize);
+                    int index = UDF_INDEX(x, y, z, blockSize) + udfOffset;
                     int value = udfVoxData[index];
                     int size;
                     for (size = 1; size < blockSize; size++) {
-                        if (!IsFilled(udfVoxData, blockSize, blockOffset,
+                        if (!IsFilled(udfVoxData, blockSize, udfOffset,
                                       x, y, z, size, value)) {
                             break;
                         }
