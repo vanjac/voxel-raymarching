@@ -3,30 +3,39 @@
 
 #include <QFile>
 #include <vector>
+#include <string>
+#include <unordered_map>
+#include "util.h"
 
-static const int PALETTE_SIZE = 256 * 4;
+static const int PALETTE_ENTRIES = 256;
+static const int PALETTE_SIZE = PALETTE_ENTRIES * 4;
 
-struct VoxModel
+struct VoxModel : noncopyable
 {
     VoxModel(int xDim, int yDim, int zDim)
         : xDim(xDim), yDim(yDim), zDim(zDim)
-        , data(new unsigned char [xDim * yDim * zDim]{ 0 }) { }
-    ~VoxModel() { delete[] data; }
+        , data(xDim * yDim * zDim) { }
 
     int xDim, yDim, zDim;
-    unsigned char *data;
+    std::vector<char> data;
 };
 
-struct VoxPack
+struct VoxPack : noncopyable
 {
-    VoxPack()
-        : palette(new float[PALETTE_SIZE]) { }
-    ~VoxPack() { delete[] palette; }
     std::vector<VoxModel> models;
-    float *palette;
+    std::vector<VoxModel *> orderedModels;
+    float palette[PALETTE_SIZE];
 };
 
-class VoxLoader
+struct VoxTransform : noncopyable
+{
+    VoxTransform(std::string name, int id, int child)
+        : name(name), id(id), child(child) { }
+    std::string name;
+    int id, child;
+};
+
+class VoxLoader : noncopyable
 {
 public:
     VoxLoader(QString filename);
@@ -37,11 +46,21 @@ public:
 
 private:
     bool readChunk();
+    // chunk types
     bool readSIZE();
     bool readXYZI();
     bool readRGBA();
+    bool readnTRN();
+    bool readnSHP();
+    // data types
+    std::unordered_map<std::string, std::string> readDICT();
+    std::string readSTRING();
 
     QFile file;
+
+    std::vector<VoxTransform> transforms;
+    // maps shape node ID to model ID
+    std::unordered_map<int, int> shapeNodeModels;
 };
 
 #endif // VOXLOADER_H

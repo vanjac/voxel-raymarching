@@ -18,7 +18,7 @@ bool VoxLoader::load()
     file.read(fourcc, 4);
 
     if (strncmp(fourcc, "VOX ", 4) != 0) {
-        qDebug() << "Bad magic!";
+        qWarning() << "Bad magic!";
         return false;
     }
 
@@ -26,7 +26,34 @@ bool VoxLoader::load()
     file.read((char *)&version, 4);
     qDebug() << "Version:" << version;
 
-    return readChunk();
+    if (!readChunk())
+        return false;
+
+    for (auto &t : transforms) {
+        if (!shapeNodeModels.count(t.child))
+            continue;
+        int modelID = shapeNodeModels[t.child];
+        if (modelID < 0 || modelID >= pack.models.size()) {
+            qWarning() << "Invalid model ID" << modelID;
+            continue;
+        }
+
+        if (t.name.empty())
+            continue;
+        int order;
+        try {
+            order = std::stoi(t.name);
+        }  catch (const std::logic_error &e) {
+            qWarning() << "Invalid transform name" << QString::fromStdString(t.name);
+            continue;
+        }
+
+        if (order + 1 > pack.orderedModels.size())
+            pack.orderedModels.resize(order + 1);
+        pack.orderedModels[order] = &pack.models[modelID];
+        qDebug() << "Order" << order << "-> model" << modelID;
+    }
+    return true;
 }
 
 
@@ -37,7 +64,6 @@ bool VoxLoader::readChunk()
     file.read(id, 4);
     file.read((char *)&contentBytes, 4);
     file.read((char *)&childBytes, 4);
-    //qDebug() << "Chunk" << id;
     int startData = file.pos();
     int endData = startData + contentBytes + childBytes;
 
@@ -47,13 +73,16 @@ bool VoxLoader::readChunk()
         return false;
     if (strncmp(id, "RGBA", 4) == 0 && !readRGBA())
         return false;
+    if (strncmp(id, "nTRN", 4) == 0 && !readnTRN())
+        return false;
+    if (strncmp(id, "nSHP", 4) == 0 && !readnSHP())
+        return false;
 
     file.seek(startData + contentBytes);
     while (file.pos() < endData) {
         if (!readChunk())
             return false;
     }
-    //qDebug() << "End" << id;
     file.seek(endData);
     return true;
 }
@@ -83,8 +112,8 @@ bool VoxLoader::readXYZI() {
         if (x < 0 || x >= model.xDim
                 || y < 0 || y >= model.yDim
                 || z < 0 || z >= model.zDim) {
-            qDebug() << "Bad voxel position!" << x << y << z;
-            continue;
+            qWarning() << "Bad voxel position!" << x << y << z;
+            return false;
         }
         model.data[x + y * model.xDim + z * model.xDim * model.yDim] = index;
     }
@@ -102,4 +131,55 @@ bool VoxLoader::readRGBA() {
         pack.palette[i + 4] = glm::pow(pal[i] / 256.0, 2.2);
     }
     return true;
+}
+
+bool VoxLoader::readnTRN() {
+    int32_t nodeID, childID;
+    std::string name;
+    file.read((char *)&nodeID, 4);
+    auto nodeAttr = readDICT();
+    if (nodeAttr.count("_name")) {
+        name = nodeAttr["_name"];
+    }
+    file.read((char *)&childID, 4);
+    transforms.emplace_back(name, nodeID, childID);
+    // ignore the rest
+    return true;
+}
+
+bool VoxLoader::readnSHP() {
+    int32_t nodeID, numModels, modelID;
+    file.read((char *)&nodeID, 4);
+    readDICT();
+    file.read((char *)&numModels, 4);
+    if (numModels != 1) {
+        qWarning() << "numModels isn't 1!";
+        return false;
+    }
+    file.read((char *)&modelID, 4);
+    shapeNodeModels[nodeID] = modelID;
+    // ignore the rest
+    return true;
+}
+
+std::unordered_map<std::string, std::string> VoxLoader::readDICT() {
+    std::unordered_map<std::string, std::string> map;
+    int32_t numKeys;
+    file.read((char *)&numKeys, 4);
+    for (int i = 0; i < numKeys; i++) {
+        auto key = readSTRING();
+        auto value = readSTRING();
+        map[key] = value;
+    }
+    return map;
+}
+
+std::string VoxLoader::readSTRING() {
+    int32_t stringSize;
+    file.read((char *)&stringSize, 4);
+    char *buffer = new char[stringSize];
+    file.read(buffer, stringSize);
+    auto s = std::string(buffer, stringSize);
+    delete[] buffer;
+    return s;
 }

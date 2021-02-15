@@ -19,6 +19,7 @@ HEADERS += \
     mainwindow.h \
     myglwidget.h \
     opengllog.h \
+    util.h \
     voxloader.h
 
 FORMS +=

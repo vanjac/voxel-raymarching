@@ -229,7 +229,7 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
     glGenTextures(1, &paletteTexture);
     glActiveTexture(GL_TEXTURE0 + 1);
     glBindTexture(GL_TEXTURE_1D, paletteTexture);
-    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, PALETTE_SIZE, 0,
+    glTexImage1D(GL_TEXTURE_1D, 0, GL_RGBA, PALETTE_ENTRIES, 0,
                  GL_RGBA, GL_FLOAT, pack.palette);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
