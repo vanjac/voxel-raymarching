@@ -2,7 +2,7 @@
 
 uniform isampler3D Model;
 uniform sampler1D Palette;
-uniform int BlockDim;
+uniform int BlockDim;  // must be at least 8!!
 uniform vec3 CamPos;
 uniform float PixelSize;
 
@@ -36,8 +36,9 @@ int raymarch(vec3 origin, vec3 dir, int medium,
     float scale = 1;
     int blockOffset = 0;
     int recurse = 0;
+    // these are slow!
     float maxDistStack[MAX_RECURSE_DEPTH];
-    int blockOffsetStack[MAX_RECURSE_DEPTH];
+    int blockOffsetStack[MAX_RECURSE_DEPTH];  // store normal in lower 3 bits
     while (true) {  // TODO iteration limit
         vec3 p = (origin + dir * dist) * scale;
         ivec3 texelCoord = (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset);
@@ -50,9 +51,12 @@ int raymarch(vec3 origin, vec3 dir, int medium,
         deltas = mix(deltas, vec3(DRAW_DIST), dirZero);
         float minDelta = min(deltas.x, min(deltas.y, deltas.z));
         float nextDist = dist + max(minDelta + c.g / scale, EPSILON);
+        bvec3 normalBits = equal(vec3(minDelta), deltas);
         if (c.r >= INDEX_INSTANCE) {
             maxDistStack[recurse] = maxDist;
-            blockOffsetStack[recurse] = blockOffset;
+            // pack normal into int, ugly but it works
+            blockOffsetStack[recurse] = blockOffset |
+                    int(normalBits.x) | (int(normalBits.y) << 1) | (int(normalBits.z) << 2);
             recurse++;
             scale *= BlockDim;
             // needs to end at voxel edge so don't include c.g
@@ -62,7 +66,6 @@ int raymarch(vec3 origin, vec3 dir, int medium,
             // don't store dist or last deltas
         } else {
             dist = nextDist;
-            normal = mix(vec3(0), -sign(dir), equal(vec3(minDelta), deltas));
             while (dist >= maxDist - EPSILON) {
                 if (recurse == 0) {
                     dist = maxDist;
@@ -73,8 +76,11 @@ int raymarch(vec3 origin, vec3 dir, int medium,
                 dist = maxDist + EPSILON;
                 maxDist = maxDistStack[recurse];
                 blockOffset = blockOffsetStack[recurse];
+                normalBits = bvec3(blockOffset & 1, blockOffset & 2, blockOffset & 4);
+                blockOffset &= ~7;
                 scale /= BlockDim;
             }
+            normal = mix(vec3(0), -sign(dir), normalBits);
         }
     }
 }
