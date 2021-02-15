@@ -169,12 +169,19 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
 {
     const VoxModel &model = pack.models[0];
 
-    int numVoxels = model.numVoxels();
-    int xDim = model.xDim;
+    int numVoxels = model.xDim * model.yDim * model.zDim;
+    // assume cubic blocks stacked on the z axis
+    int blockSize = model.xDim;
+    // round up to the nearest power of two (min 8)
+    int texZDim = 8;
+    while (texZDim < model.zDim)
+        texZDim *= 2;
+
+    qDebug() << "Texture size:" << blockSize << blockSize << texZDim;
 
     // distance field stores the minimum distance from the *edge* of this voxel
     // to the *edge* of a voxel of a different value
-    unsigned char *udfVoxData = new unsigned char[numVoxels * 2];
+    unsigned char *udfVoxData = new unsigned char[blockSize * blockSize * texZDim * 2];
     for (int i = 0; i < numVoxels; i++) {
         udfVoxData[i * 2] = model.data[i];
         udfVoxData[i * 2 + 1] = 0;
@@ -182,16 +189,15 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
 
     // very slow brute force!!
     // assume cubic blocks stacked on the z axis
-    // TODO: hardcoded max offset
-    for (int blockOffset = 0; blockOffset < 80; blockOffset += xDim) {
-        for (int z = 0; z < xDim; z++) {
-            for (int y = 0; y < xDim; y++) {
-                for (int x = 0; x < xDim; x++) {
-                    int index = UDF_INDEX(x, y, z + blockOffset, xDim);
+    for (int blockOffset = 0; blockOffset < model.zDim; blockOffset += blockSize) {
+        for (int z = 0; z < blockSize; z++) {
+            for (int y = 0; y < blockSize; y++) {
+                for (int x = 0; x < blockSize; x++) {
+                    int index = UDF_INDEX(x, y, z + blockOffset, blockSize);
                     int value = udfVoxData[index];
                     int size;
-                    for (size = 1; size < xDim; size++) {
-                        if (!IsFilled(udfVoxData, xDim, blockOffset,
+                    for (size = 1; size < blockSize; size++) {
+                        if (!IsFilled(udfVoxData, blockSize, blockOffset,
                                       x, y, z, size, value)) {
                             break;
                         }
@@ -208,7 +214,7 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_3D, modelTexture);
     // TODO: if you ever upgrade to OpenGL 4.2 switch to glTexStorage
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RG8UI, model.xDim, model.yDim, model.zDim, 0,
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_RG8UI, blockSize, blockSize, texZDim, 0,
                  GL_RG_INTEGER, GL_UNSIGNED_BYTE, udfVoxData);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -227,7 +233,7 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
 
     glUniform1i(modelLoc, 0);  // TEXTURE0
     glUniform1i(paletteLoc, 1);  // TEXTURE1
-    glUniform1i(blockDimLoc, xDim);  // cube
+    glUniform1i(blockDimLoc, blockSize);  // cube
 }
 
 

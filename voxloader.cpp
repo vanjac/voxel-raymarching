@@ -3,6 +3,9 @@
 #include <QDebug>
 #include <glm/glm.hpp>
 
+// https://github.com/ephtracy/voxel-model/blob/master/MagicaVoxel-file-format-vox.txt
+// https://github.com/ephtracy/voxel-model/blob/master/MagicaVoxel-file-format-vox-extension.txt
+
 VoxLoader::VoxLoader(QString filename)
     : file(filename)
 {

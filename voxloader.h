@@ -13,8 +13,6 @@ struct VoxModel
         , data(new unsigned char [xDim * yDim * zDim]{ 0 }) { }
     ~VoxModel() { delete[] data; }
 
-    int numVoxels() const { return xDim * yDim * zDim; }
-
     int xDim, yDim, zDim;
     unsigned char *data;
 };
