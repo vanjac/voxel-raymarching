@@ -191,6 +191,8 @@ void MyGLWidget::loadXRAWModel(QString filename)
         linearPalette[i] = glm::pow(palette[i] / 256.0, 2.2);
     delete[] palette;
 
+    // distance field stores the minimum distance from the *edge* of this voxel
+    // to the *edge* of a voxel of a different value
     unsigned char *udfVoxData = new unsigned char[voxelBufLen * 2];
     for (int i = 0; i < voxelBufLen; i++) {
         udfVoxData[i * 2] = voxData[i];

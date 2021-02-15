@@ -19,7 +19,7 @@ out vec4 fColor;
 
 const float EPSILON = 0.0001;
 const float BIG_EPSILON = 0.001;
-const int MAX_RECURSE_DEPTH = 8;
+const int MAX_RECURSE_DEPTH = 4;
 const float DRAW_DIST = 256;
 const float AMBIENT_OCC_DIST = 1;  // diagonal
 const float AMBIENT_OCC_AMOUNT = 0.7;
@@ -38,20 +38,18 @@ int raymarch(vec3 origin, vec3 dir, int medium,
     int recurse = 0;
     float maxDistStack[MAX_RECURSE_DEPTH];
     int blockOffsetStack[MAX_RECURSE_DEPTH];
-    vec3 lastDeltas = vec3(0,0,0);  // TODO: simplify
-    float lastMinDelta = 0;
     while (true) {  // TODO iteration limit
         vec3 p = (origin + dir * dist) * scale;
         ivec3 texelCoord = (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset);
         ivec2 c = texelFetch(Model, texelCoord, 0).rg;
         if (c.r < INDEX_INSTANCE && c.r != medium) {
-            normal = mix(vec3(0), -sign(dir), equal(vec3(lastMinDelta), lastDeltas));
             return c.r;
         }
 
         vec3 deltas = (step(0, dir) - fract(p)) / dir / scale;
         deltas = mix(deltas, vec3(DRAW_DIST), dirZero);
         float minDelta = min(deltas.x, min(deltas.y, deltas.z));
+        float nextDist = dist + max(minDelta + c.g / scale, EPSILON);
         if (c.r >= INDEX_INSTANCE) {
             maxDistStack[recurse] = maxDist;
             blockOffsetStack[recurse] = blockOffset;
@@ -59,18 +57,20 @@ int raymarch(vec3 origin, vec3 dir, int medium,
             scale *= BlockDim;
             // needs to end at voxel edge so don't include c.g
             // TODO optimize for multiple instances in a row
-            maxDist = dist + minDelta - EPSILON;
+            maxDist = nextDist;
             blockOffset = BlockDim * (c.r - INDEX_INSTANCE);
             // don't store dist or last deltas
         } else {
-            dist += max(minDelta + c.g / scale, EPSILON);
-            lastDeltas = deltas;
-            lastMinDelta = minDelta;
-            if (dist >= maxDist) {
+            dist = nextDist;
+            normal = mix(vec3(0), -sign(dir), equal(vec3(minDelta), deltas));
+            while (dist >= maxDist - EPSILON) {
                 if (recurse == 0) {
+                    dist = maxDist;
+                    normal = -dir;
                     return medium;
                 }
                 recurse--;
+                dist = maxDist + EPSILON;
                 maxDist = maxDistStack[recurse];
                 blockOffset = blockOffsetStack[recurse];
                 scale /= BlockDim;
