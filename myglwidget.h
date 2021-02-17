@@ -46,7 +46,7 @@ private slots:
 private:
     GLuint frameVAO;
     GLuint framePosBuffer, frameUVBuffer;
-    GLuint modelTexture, paletteTexture;
+    GLuint modelBuffer, modelTexture, paletteTexture;
     GLuint program;
     GLuint timerQuery;
     // shader uniform locations

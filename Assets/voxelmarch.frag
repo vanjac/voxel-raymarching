@@ -1,6 +1,6 @@
 #version 330 core
 
-uniform isampler3D Model;
+uniform isamplerBuffer Model;
 uniform sampler1D Palette;
 uniform int BlockDim;  // must be at least 8!!
 uniform vec3 CamPos;
@@ -41,8 +41,10 @@ int raymarch(vec3 origin, vec3 dir, int medium,
     int blockOffsetStack[MAX_RECURSE_DEPTH];  // store normal in lower 3 bits
     while (true) {  // TODO iteration limit
         vec3 p = (origin + dir * dist) * scale;
-        ivec3 texelCoord = (ivec3(floor(p)) & (BlockDim - 1)) + ivec3(0, 0, blockOffset);
-        ivec2 c = texelFetch(Model, texelCoord, 0).rg;
+        ivec3 voxelCoord = ivec3(floor(p)) & (BlockDim - 1);
+        int texelIndex = voxelCoord.x + voxelCoord.y * BlockDim
+                + (voxelCoord.z + blockOffset) * BlockDim * BlockDim;
+        ivec2 c = texelFetch(Model, texelIndex).rg;
         if (c.r < INDEX_INSTANCE && c.r != medium) {
             return c.r;
         }

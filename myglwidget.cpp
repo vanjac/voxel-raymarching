@@ -180,9 +180,10 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
         texZDim *= 2;
 
     qDebug() << "Texture size:" << blockSize << blockSize << texZDim;
+    int udfSize = blockSize * blockSize * texZDim * 2;
     // distance field stores the minimum distance from the *edge* of this voxel
     // to the *edge* of a voxel of a different value
-    unsigned char *udfVoxData = new unsigned char[blockSize * blockSize * texZDim * 2];
+    unsigned char *udfVoxData = new unsigned char[udfSize];
 
     for (int blockI = 0; blockI < numBlocks; blockI++) {
         int udfOffset = UDF_INDEX(0, 0, blockI * blockSize, blockSize);
@@ -212,19 +213,13 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
         }
     }
 
-
+    glGenBuffers(1, &modelBuffer);
+    glBindBuffer(GL_TEXTURE_BUFFER, modelBuffer);
+    glBufferData(GL_TEXTURE_BUFFER, udfSize, udfVoxData, GL_STATIC_DRAW);
     glGenTextures(1, &modelTexture);
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_3D, modelTexture);
-    // TODO: if you ever upgrade to OpenGL 4.2 switch to glTexStorage
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_RG8UI, blockSize, blockSize, texZDim, 0,
-                 GL_RG_INTEGER, GL_UNSIGNED_BYTE, udfVoxData);
-    delete[] udfVoxData;
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+    glBindTexture(GL_TEXTURE_1D, modelTexture);
+    glTexBuffer(GL_TEXTURE_BUFFER, GL_RG8UI, modelBuffer);
 
     glGenTextures(1, &paletteTexture);
     glActiveTexture(GL_TEXTURE0 + 1);
