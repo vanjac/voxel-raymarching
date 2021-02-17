@@ -173,14 +173,8 @@ void MyGLWidget::uploadVoxelData(const VoxPack &pack)
     // assume cubic blocks all of equal size
     int blockSize = pack.orderedModels[0]->xDim;
     int numBlocks = pack.orderedModels.size();
-    // stack blocks on the z axis
-    // round up to the nearest power of two (min 8)
-    int texZDim = 8;
-    while (texZDim < blockSize * numBlocks)
-        texZDim *= 2;
 
-    qDebug() << "Texture size:" << blockSize << blockSize << texZDim;
-    int udfSize = blockSize * blockSize * texZDim * 2;
+    int udfSize = blockSize * blockSize * blockSize * numBlocks * 2;
     // distance field stores the minimum distance from the *edge* of this voxel
     // to the *edge* of a voxel of a different value
     unsigned char *udfVoxData = new unsigned char[udfSize];
